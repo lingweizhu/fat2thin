@@ -9,7 +9,7 @@ from core.agent.tsallis_awac import TKLPolicyInAC, TAWACqG
 from core.agent.td3_bc import TD3BC
 from core.agent.awac import AWAC, AWACqG
 from core.agent.fattothin_awac import FatToThinQGaussianAWAC
-
+from core.agent.ttt_awac import TsallisAwacTklLoss
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="run_file")
@@ -81,6 +81,8 @@ if __name__ == '__main__':
         agent_obj = AWAC(cfg)
     elif cfg.agent == "FTT_AWAC":
         agent_obj = FatToThinQGaussianAWAC(cfg)
+    elif cfg.agent == "TTT_AWAC":
+        agent_obj = TsallisAwacTklLoss(cfg)
     else:
         raise NotImplementedError
 

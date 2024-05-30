@@ -47,14 +47,14 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         if self.entropic_index == 1:
             return torch.exp(inputs)
         else:
-            return torch.maximum(torch.FloatTensor([0.]), 1 + (1 - q) * inputs) ** (1/(1-q))
-        
+            return torch.maximum(torch.FloatTensor([self.eps]), 1 + (1 - q) * inputs) ** (1/(1-q))
+
     # def _log_q(self, inputs, q):
     #     if q == 1:
     #         return torch.log(inputs)
     #     else:
     #         return (inputs ** (1-q) - 1) / (1 - q)
-        
+
     # @torch.no_grad()
     # def act(self, state: Float[np.ndarray, "state_dim"], greedy: bool=False) -> Float[np.ndarray, "action_dim"]:
     #     state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
@@ -185,7 +185,7 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         state_batch, action_batch = data['obs'], data['act']
         log_probs = self.proposal.log_prob(state_batch, action_batch)
         min_Q, q1, q2 = self.get_q_value(state_batch, action_batch, with_grad=False)
-        value = (q1 + q2) / 2.
+        value = min_Q.mean()#(q1 + q2) / 2.
         x = (min_Q - value) / self.alpha
         tsallis_policy = self._exp_q(x, q=self.entropic_index)
         clipped = torch.clip(tsallis_policy, self.eps, self.exp_threshold)
