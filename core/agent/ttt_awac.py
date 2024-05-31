@@ -14,18 +14,17 @@ class TsallisAwacTklLoss(base.ActorCritic):
         self.gamma = cfg.gamma
         self.alpha = cfg.tau
         self.rho = cfg.rho
-        self.entropic_index = cfg.tsallis_q
-        self.loss_entropic_index = cfg.tsallis_q#TODO: a different number
+        self.entropic_index = 0 #1. / cfg.tsallis_q
+        self.loss_entropic_index = 0.5 #cfg.tsallis_q#TODO: a different number
         self.n_action_proposals = 10
-        self.ratio_threshold = 0.999 #ratio_threshold
+        self.ratio_threshold = 0.2 #ratio_threshold
         self.fdiv_name = "jensen_shannon"
 
     def _exp_q(self, inputs, q):
         if self.entropic_index == 1:
             return torch.exp(inputs)
         else:
-            return torch.maximum(torch.FloatTensor([self.eps]), 1 + (1 - q) * inputs) ** (1/(1-q))
-            # return torch.maximum(torch.FloatTensor([0.]), 1 + (1 - q) * inputs) ** (1/(1-q))
+            return torch.maximum(torch.FloatTensor([0.]), 1 + (1 - q) * inputs) ** (1/(1-q))
 
     def _log_q(self, inputs, q):
         if q == 1:
@@ -107,17 +106,16 @@ class TsallisAwacTklLoss(base.ActorCritic):
         q - q.min, choose q < 1
         when q - q.mean, both
         """
-        # baseline_dim = 1 if best_q_values.shape[1] > 1 else 0
-        # if self.entropic_index >= 1:
-        #     baseline = best_q_values.max(dim=1, keepdim=True)[0]
-        # # elif self.entropic_index < 1:
-        # else:
-        #     """
-        #     use mean to filter out half of bad losses
-        #     """
-        #     baseline = best_q_values.mean(dim=baseline_dim, keepdim=True)[0]
-        #     # baseline = best_q_values.min(dim=baseline_dim, keepdim=True)[0]
-        baseline = best_q_values.mean()
+        baseline_dim = 1 if best_q_values.shape[1] > 1 else 0
+        if self.entropic_index >= 1:
+            baseline = best_q_values.max(dim=1, keepdim=True)[0]
+        # elif self.entropic_index < 1:
+        else:
+            """
+            use mean to filter out half of bad losses
+            """
+            baseline = best_q_values.mean(dim=baseline_dim, keepdim=True)[0]
+            # baseline = best_q_values.min(dim=baseline_dim, keepdim=True)[0]
 
         """
         Tsallis KL as loss function

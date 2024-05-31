@@ -38,7 +38,7 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         # self.buffer = replay_buffer
         self.rho = cfg.rho
         self.n_action_proposals = 10#n_action_proposals
-        self.entropic_index = cfg.tsallis_q
+        self.entropic_index = 0 #cfg.tsallis_q
         # match the initialization of both policies
         self.proposal.load_state_dict(self.ac.pi.state_dict())
         self.exp_threshold = 10000
@@ -47,7 +47,7 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         if self.entropic_index == 1:
             return torch.exp(inputs)
         else:
-            return torch.maximum(torch.FloatTensor([self.eps]), 1 + (1 - q) * inputs) ** (1/(1-q))
+            return torch.maximum(torch.FloatTensor([0.]), 1 + (1 - q) * inputs) ** (1/(1-q))
 
     # def _log_q(self, inputs, q):
     #     if q == 1:
@@ -185,8 +185,15 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         state_batch, action_batch = data['obs'], data['act']
         log_probs = self.proposal.log_prob(state_batch, action_batch)
         min_Q, q1, q2 = self.get_q_value(state_batch, action_batch, with_grad=False)
-        value = min_Q.mean()#(q1 + q2) / 2.
-        x = (min_Q - value) / self.alpha
+
+        baseline_dim = 1 if min_Q.shape[1] > 1 else 0
+        if self.entropic_index >= 1:
+            baseline = min_Q.max(dim=1, keepdim=True)[0]
+        # elif self.entropic_index < 1:
+        else:
+            # use mean to filter out half of bad losses
+            baseline = min_Q.mean(dim=baseline_dim, keepdim=True)[0]
+        x = (min_Q - baseline) / self.alpha
         tsallis_policy = self._exp_q(x, q=self.entropic_index)
         clipped = torch.clip(tsallis_policy, self.eps, self.exp_threshold)
         pi_loss = -(clipped * log_probs).mean()
