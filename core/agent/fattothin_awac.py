@@ -1,7 +1,9 @@
 import os
+import numpy as np
 import torch
 from core.agent import base
 from core.policy.qGaussian import qMultivariateGaussian
+from core.network.network_architectures import FCNetwork
 
 
 class FatToThinQGaussianAWAC(base.ActorCritic):
@@ -37,11 +39,14 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         # self.critic = critic
         # self.buffer = replay_buffer
         self.rho = cfg.rho
-        self.n_action_proposals = 10#n_action_proposals
-        self.entropic_index = 1 #cfg.tsallis_q
+        self.n_action_proposals = 10
+        self.entropic_index = 0
         # match the initialization of both policies
         self.proposal.load_state_dict(self.ac.pi.state_dict())
         self.exp_threshold = 10000
+
+        self.value_net = FCNetwork(cfg.device, np.prod(cfg.state_dim), [cfg.hidden_units]*2, 1)
+        self.value_optimizer = torch.optim.Adam(list(self.value_net.parameters()), cfg.q_lr)
 
     def _exp_q(self, inputs, q):
         if self.entropic_index == 1:
@@ -66,6 +71,22 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
     #         return act
     #     else:
     #         return int(act[0])
+
+
+    def update_value(self, data):
+        """L_{\phi}, learn z for state value, v = tau log z"""
+        states = data['obs']
+        v_phi = self.value_net(states)
+        with torch.no_grad():
+            actions, log_probs = self.ac.pi.sample(states)
+            min_Q, _, _ = self.get_q_value_target(states, actions)
+        target = min_Q
+        value_loss = (0.5 * (v_phi - target) ** 2).mean()
+        # print("v", v_phi.size(), target.size(), min_Q.size(), actions.size(), log_probs.size())
+        self.value_optimizer.zero_grad()
+        value_loss.backward()
+        self.value_optimizer.step()
+        return
 
     def update_critic(self, data):
         state_batch, action_batch, reward_batch, next_state_batch, dones = (
@@ -186,13 +207,15 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         log_probs = self.proposal.log_prob(state_batch, action_batch)
         min_Q, q1, q2 = self.get_q_value(state_batch, action_batch, with_grad=False)
 
-        baseline_dim = 1 if min_Q.shape[1] > 1 else 0
-        if self.entropic_index >= 1:
-            baseline = min_Q.max(dim=1, keepdim=True)[0]
-        # elif self.entropic_index < 1:
-        else:
-            # use mean to filter out half of bad losses
-            baseline = min_Q.mean(dim=baseline_dim, keepdim=True)[0]
+        # baseline_dim = 1 if min_Q.shape[1] > 1 else 0
+        # if self.entropic_index >= 1:
+        #     baseline = min_Q.max(dim=1, keepdim=True)[0]
+        # # elif self.entropic_index < 1:
+        # else:
+        #     # use mean to filter out half of bad losses
+        #     baseline = min_Q.mean(dim=baseline_dim, keepdim=True)[0]
+        with torch.no_grad():
+            baseline = self.value_net(state_batch)
         x = (min_Q - baseline) / self.alpha
         tsallis_policy = self._exp_q(x, q=self.entropic_index)
         clipped = torch.clip(tsallis_policy, self.eps, self.exp_threshold)
@@ -243,6 +266,7 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
 
 
     def update(self, data):
+        self.update_value(data)
         self.update_critic(data)
         self.update_actor(data)
         if self.use_target_network and self.total_steps % self.target_network_update_freq == 0:

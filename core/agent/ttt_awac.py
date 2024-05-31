@@ -14,7 +14,7 @@ class TsallisAwacTklLoss(base.ActorCritic):
         self.gamma = cfg.gamma
         self.alpha = cfg.tau
         self.rho = cfg.rho
-        self.entropic_index = 1 #1. / cfg.tsallis_q
+        self.entropic_index = 0 #1. / cfg.tsallis_q
         self.loss_entropic_index = 0.5 #cfg.tsallis_q#TODO: a different number
         self.n_action_proposals = 10
         self.ratio_threshold = 0.2 #ratio_threshold
