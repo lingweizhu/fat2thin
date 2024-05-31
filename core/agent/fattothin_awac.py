@@ -38,7 +38,7 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         # self.buffer = replay_buffer
         self.rho = cfg.rho
         self.n_action_proposals = 10#n_action_proposals
-        self.entropic_index = 0 #cfg.tsallis_q
+        self.entropic_index = 1 #cfg.tsallis_q
         # match the initialization of both policies
         self.proposal.load_state_dict(self.ac.pi.state_dict())
         self.exp_threshold = 10000
@@ -209,32 +209,33 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         SPOT style
         E_{a ~ pi_{proposal}} [-Q{actor}(a|s) - ln pi_{proposal}(a|s)]
         """
-        # action_batch, _, _, = self.bp.policy.sample(state_batch, self.n_action_proposals)
-        # stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, action_batch)
         stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
         with torch.no_grad():
             action_samples, _ = self.ac.pi.sample(stacked_s_batch_full)
         stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
-
-        # stacked_s_batch_full = stacked_s_batch_full.reshape(-1, self.state_dim)
-        # action_samples = action_samples.reshape(-1, self.action_dim)
-        # proposal_logprob = self.pp.policy.log_prob(stacked_s_batch_full, action_batch)
         with torch.no_grad():
             proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
-        # n_samples = int(self.rho * self.n_action_proposals)
-        # # proposal_logprob = proposal_logprob.reshape(self.batch_size, n_samples, 1)
-        # # proposal_logprob = -proposal_logprob[:, :, 0]
-        # proposal_logprob = proposal_logprob.reshape(self.batch_size, n_samples)
+        actor_loss = -proposal_logprob.mean()
 
 
-        # actor_loss = self.bp.policy.log_prob(stacked_s_batch, best_actions)
-        actor_loss = self.ac.pi.log_prob(stacked_s_batch, best_actions)
-        # # actor_loss = actor_loss.reshape(self.batch_size, n_samples, 1)
-        # actor_loss = actor_loss.reshape(self.batch_size, n_samples)
-        # actor_loss = actor_loss.mean(axis=1)
+        # stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
+        # with torch.no_grad():
+        #     action_samples, _ = self.ac.pi.sample(stacked_s_batch_full)
+        # stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
+        # with torch.no_grad():
+        #     proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
+        # actor_loss = self.ac.pi.log_prob(stacked_s_batch, best_actions)
+        # actor_loss = actor_loss + (proposal_logprob * self.alpha)
+        # actor_loss = -actor_loss.mean()
 
-        actor_loss = actor_loss + (proposal_logprob * self.alpha)
-        actor_loss = -actor_loss.mean()
+        # stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
+        # action_samples, _ = self.ac.pi.sample(stacked_s_batch_full)
+        # stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
+        # min_Q, _, _ = self.get_q_value(stacked_s_batch, best_actions, with_grad=False)
+        # with torch.no_grad():
+        #     proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
+        # actor_loss = -(min_Q + (proposal_logprob * self.alpha)).mean()
+
         self.pi_optimizer.zero_grad()
         actor_loss.backward()
         self.pi_optimizer.step()
