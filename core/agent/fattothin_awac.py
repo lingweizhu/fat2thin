@@ -230,21 +230,24 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         E_{a ~ pi_{proposal}} [-Q{actor}(a|s) - ln pi_{proposal}(a|s)]
         """
 
+        action_samples, _ = self.ac.pi.rsample(state_batch)
+        proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
+        actor_loss = -proposal_logprob.mean()
+
         # stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
         # action_samples, _ = self.ac.pi.rsample(stacked_s_batch_full)
         # stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
         # proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
         # actor_loss = -proposal_logprob.mean()
 
-
-        stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
-        action_samples, _ = self.ac.pi.sample(stacked_s_batch_full)
-        stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
-        with torch.no_grad():
-            proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
-        actor_loss = self.ac.pi.log_prob(stacked_s_batch, best_actions)
-        actor_loss = actor_loss + (proposal_logprob * self.alpha)
-        actor_loss = -actor_loss.mean()
+        # stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
+        # action_samples, _ = self.ac.pi.sample(stacked_s_batch_full)
+        # stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
+        # with torch.no_grad():
+        #     proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
+        # actor_loss = self.ac.pi.log_prob(stacked_s_batch, best_actions)
+        # actor_loss = actor_loss + (proposal_logprob * self.alpha)
+        # actor_loss = -actor_loss.mean()
 
 
         # stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
