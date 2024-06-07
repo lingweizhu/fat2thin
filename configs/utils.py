@@ -50,11 +50,11 @@ def write_job_scripts(sweep_params, target_agents, target_envs, target_datasets,
         kwargs[" --distribution "] = dist
         kwargs.update(DEFAULT_ENV[env])
 
-        if agent in agent_parameters["{}-{}".format(env, dataset)]:
-            default_params = agent_parameters["{}-{}".format(env, dataset)][agent]
-            settings = {**sweep_params, **default_params}
-        else:
-            settings = sweep_params
+        # if agent in agent_parameters["{}-{}".format(env, dataset)]:
+        #     default_params = agent_parameters["{}-{}".format(env, dataset)][agent]
+        #     settings = {**sweep_params, **default_params}
+        # else:
+        settings = sweep_params
 
         keys, values = zip(*settings.items())
         param_combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]

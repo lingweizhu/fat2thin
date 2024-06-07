@@ -8,9 +8,9 @@ from core.network.network_architectures import FCNetwork
 from core.utils import torch_utils
 
 
-class FatToThinQGaussianAWAC(base.ActorCritic):
+class FatToThin(base.ActorCritic):
     def __init__(self, cfg):
-        super(FatToThinQGaussianAWAC, self).__init__(cfg)
+        super(FatToThin, self).__init__(cfg)
         self.discrete_action = cfg.discrete_control
         self.action_dim = cfg.action_dim
         self.state_dim = cfg.state_dim
