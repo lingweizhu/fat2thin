@@ -44,8 +44,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--distribution', default='Gaussian', type=str)
     parser.add_argument('--distribution_param', default=2., type=float)
+    parser.add_argument('--proposal_distribution', default='HTqGaussian', type=str)
 
     parser.add_argument('--agent', default='IQL', type=str)
+    parser.add_argument('--actor_loss', default='KL', type=str)
     parser.add_argument('--tsallis_q', default=2, type=int)
     parser.add_argument('--tau', default=0.1, type=float)
     parser.add_argument('--expectile', default=0.8, type=float)

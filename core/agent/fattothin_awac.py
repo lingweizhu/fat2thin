@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from core.agent import base
 from core.policy.qGaussian import qHeavyTailedGaussian
+from core.policy.student import Student
 from core.network.network_architectures import FCNetwork
 from core.utils import torch_utils
 
@@ -32,11 +33,24 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         self.state_dim = cfg.state_dim
         self.alpha = cfg.tau
 
-        # self.proposal = qMultivariateGaussian(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units]*2, cfg.action_min, cfg.action_max, entropic_index=cfg.distribution_param)
-        self.proposal = qHeavyTailedGaussian(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units]*2, cfg.action_min, cfg.action_max, entropic_index=cfg.distribution_param)
-        self.proposal_optimizer = torch.optim.Adam(list(self.proposal.parameters()), cfg.pi_lr)
-        self.proposal.load_state_dict(self.ac.pi.state_dict())
+        if self.cfg.actor_loss == "MaxLikelihood":
+            self.calculate_actor_loss = self.actor_maxlikelihood
+        elif self.cfg.actor_loss == "KL":
+            self.calculate_actor_loss = self.actor_kl
+        elif self.cfg.actor_loss == "GAC":
+            self.calculate_actor_loss = self.actor_gac
+        elif self.cfg.actor_loss == "SPOT":
+            self.calculate_actor_loss = self.actor_spot
 
+        if cfg.proposal_distribution == "HTqGaussian":
+            self.proposal = qHeavyTailedGaussian(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units]*2, cfg.action_min, cfg.action_max, entropic_index=cfg.distribution_param)
+            self.proposal.load_state_dict(self.ac.pi.state_dict())
+        elif cfg.proposal_distribution == "Student":
+            self.proposal = Student(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units] * 2, cfg.action_min, cfg.action_max, df=cfg.distribution_param)
+        else:
+            raise NotImplementedError
+
+        self.proposal_optimizer = torch.optim.Adam(list(self.proposal.parameters()), cfg.pi_lr)
         self.rho = cfg.rho
         self.n_action_proposals = 10
         self.entropic_index = 0
@@ -93,7 +107,10 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         # When updating Q functions, we don't want to backprop through the
         # policy and target network parameters
         # next_state_action, _, _ = self.bp.policy.sample(next_state_batch)
-        next_state_action, _ = self.ac.pi.sample(next_state_batch)
+
+        # next_state_action, _ = self.ac.pi.sample(next_state_batch) # TODO: try to use proposal
+        next_state_action, _ = self.proposal.sample(next_state_batch)
+
         # with torch.no_grad():
         #     next_q = self.critic.target_net(next_state_batch, next_state_action)
         #     target_q_value = reward_batch + mask_batch * self.gamma * next_q
@@ -150,7 +167,46 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
     #     best_actions = torch.reshape(best_actions, (-1, self.action_dim))
     #
     #     return stacked_s_batch_full, stacked_s_batch, best_actions
-    
+
+    def actor_maxlikelihood(self, state_batch, action_batch):
+        action_samples, _ = self.ac.pi.rsample(state_batch)
+        with torch.no_grad():
+            proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
+        actor_loss = -proposal_logprob.mean()
+        return actor_loss
+
+    def actor_kl(self, state_batch, action_batch):
+        action_samples, logp = self.ac.pi.rsample(state_batch)
+        with torch.no_grad():
+            proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
+        actor_loss = (logp - proposal_logprob).mean()
+        return actor_loss
+
+    def actor_gac(self, state_batch, action_batch):
+        stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
+        action_samples, _ = self.ac.pi.sample(stacked_s_batch_full)
+        stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
+        with torch.no_grad():
+            proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
+        logp = self.ac.pi.log_prob(stacked_s_batch, best_actions)
+        actor_loss = (-logp - proposal_logprob * self.alpha).mean()
+        return actor_loss
+
+    def actor_spot(self, state_batch, action_batch):
+        action_samples, _ = self.ac.pi.rsample(state_batch)
+        min_Q, _, _ = self.get_q_value(state_batch, action_samples, with_grad=True)
+        with torch.no_grad():
+            proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
+        actor_loss = -(min_Q + (proposal_logprob * self.alpha)).mean()
+        # stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
+        # action_samples, _ = self.ac.pi.rsample(stacked_s_batch_full)
+        # stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
+        # min_Q, _, _ = self.get_q_value(stacked_s_batch, best_actions, with_grad=True)
+        # with torch.no_grad():
+        #     proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
+        # actor_loss = -(min_Q + (proposal_logprob * self.alpha)).mean()
+        return actor_loss
+
 
     def update_actor(self, data) -> None:
         # # Sample a batch from memory
@@ -205,14 +261,14 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         log_probs = self.proposal.log_prob(state_batch, action_batch)
         min_Q, q1, q2 = self.get_q_value(state_batch, action_batch, with_grad=False)
         baseline_dim = 1 if min_Q.shape[1] > 1 else 0
-        if self.entropic_index >= 1:
-            baseline = min_Q.max(dim=1, keepdim=True)[0]
-        # elif self.entropic_index < 1:
-        else:
-            # use mean to filter out half of bad losses
-            baseline = min_Q.mean(dim=baseline_dim, keepdim=True)[0]
-        # with torch.no_grad():
-        #     baseline = self.value_net(state_batch)
+        # if self.entropic_index >= 1:
+        #     baseline = min_Q.max(dim=1, keepdim=True)[0]
+        # # elif self.entropic_index < 1:
+        # else:
+        #     # use mean to filter out half of bad losses
+        #     baseline = min_Q.mean(dim=baseline_dim, keepdim=True)[0]
+        with torch.no_grad():
+            baseline = self.value_net(state_batch)
         x = (min_Q - baseline) / self.alpha
         tsallis_policy = self._exp_q(x, q=self.entropic_index)
         clipped = torch.clip(tsallis_policy, self.eps, self.exp_threshold)
@@ -230,40 +286,15 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         E_{a ~ pi_{proposal}} [-Q{actor}(a|s) - ln pi_{proposal}(a|s)]
         """
 
-        action_samples, _ = self.ac.pi.rsample(state_batch)
-        proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
-        actor_loss = -proposal_logprob.mean()
-
-        # stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
-        # action_samples, _ = self.ac.pi.rsample(stacked_s_batch_full)
-        # stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
-        # proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
-        # actor_loss = -proposal_logprob.mean()
-
-        # stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
-        # action_samples, _ = self.ac.pi.sample(stacked_s_batch_full)
-        # stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
-        # with torch.no_grad():
-        #     proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
-        # actor_loss = self.ac.pi.log_prob(stacked_s_batch, best_actions)
-        # actor_loss = actor_loss + (proposal_logprob * self.alpha)
-        # actor_loss = -actor_loss.mean()
-
-
-        # stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
-        # action_samples, _ = self.ac.pi.rsample(stacked_s_batch_full)
-        # stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
-        # min_Q, _, _ = self.get_q_value(stacked_s_batch, best_actions, with_grad=True)
-        # with torch.no_grad():
-        #     proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
-        # actor_loss = -(min_Q + (proposal_logprob * self.alpha)).mean()
-
+        actor_loss = self.calculate_actor_loss(state_batch, action_batch)
         self.pi_optimizer.zero_grad()
         actor_loss.backward()
         self.pi_optimizer.step()
 
+        # self.ac.pi.load_state_dict(self.proposal.state_dict())
+
     def update(self, data):
-        # self.update_value(data)
+        self.update_value(data)
         self.update_critic(data)
         self.update_actor(data)
         if self.use_target_network and self.total_steps % self.target_network_update_freq == 0:
