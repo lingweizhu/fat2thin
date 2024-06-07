@@ -32,6 +32,8 @@ class FatToThin(base.ActorCritic):
             self.calculate_actor_loss = self.actor_gac
         elif self.cfg.actor_loss == "SPOT":
             self.calculate_actor_loss = self.actor_spot
+        elif self.cfg.actor_loss == "TAWAC":
+            self.calculate_actor_loss = self.actor_tawac # TODO: Need to check the math
 
         if cfg.proposal_distribution == "HTqGaussian":
             self.proposal = qHeavyTailedGaussian(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units]*2, cfg.action_min, cfg.action_max, entropic_index=cfg.distribution_param)
@@ -149,6 +151,18 @@ class FatToThin(base.ActorCritic):
         # actor_loss = -(min_Q + (proposal_logprob * self.alpha)).mean()
         return actor_loss
 
+    def actor_tawac(self, state_batch, action_batch):
+        action_samples, _ = self.ac.pi.rsample(state_batch)
+        min_Q, _, _ = self.get_q_value(state_batch, action_batch, with_grad=True)
+        with torch.no_grad():
+            baseline = self.value_net(state_batch)
+            log_probs = self.proposal.log_prob(state_batch, action_samples)
+        x = (min_Q - baseline) / self.alpha
+        tsallis_policy = self._exp_q(x, q=self.entropic_index)
+        clipped = torch.clip(tsallis_policy, self.eps, self.exp_threshold)
+        actor_loss = -(clipped * log_probs).mean()
+        return actor_loss
+
     def update_proposal(self, data):
         state_batch, action_batch = data['obs'], data['act']
         log_probs = self.proposal.log_prob(state_batch, action_batch)
@@ -204,3 +218,27 @@ class FatToThin(base.ActorCritic):
         self.ac.pi.load_state_dict(model["actor_net"])
         self.ac.q1q2.load_state_dict(model["critic_net"])
         self.proposal.load_state_dict(model["proposal_net"])
+
+
+    def log_file(self, elapsed_time=-1, test=True):
+        mean, median, min_, max_ = self.log_return(self.ep_returns_queue_train, "TRAIN", elapsed_time)
+        if test:
+            self.populate_states, self.populate_actions, self.populate_true_qs = self.populate_returns(log_traj=True)
+            self.populate_latest = True
+            mean, median, min_, max_ = self.log_return(self.ep_returns_queue_test, "TEST", elapsed_time)
+            try:
+                normalized = np.array([self.eval_env.env.unwrapped.get_normalized_score(ret_) for ret_ in self.ep_returns_queue_test])
+                mean, median, min_, max_ = self.log_return(normalized, "Normalized", elapsed_time)
+            except:
+                pass
+
+            self.populate_states, self.populate_actions, self.populate_true_qs = self.populate_returns(log_traj=True, sampler=self.proposal)
+            mean, median, min_, max_ = self.log_return(self.ep_returns_queue_test, "Proposal", elapsed_time)
+            try:
+                normalized = np.array(
+                    [self.eval_env.env.unwrapped.get_normalized_score(ret_) for ret_ in
+                     self.ep_returns_queue_test])
+                mean, median, min_, max_ = self.log_return(normalized, "Proposal", elapsed_time)
+            except:
+                pass
+        return mean, median, min_, max_

@@ -24,13 +24,13 @@ def c20240607():
         " --q_lr_prob ": [1.],
         " --actor_loss ": ["KL"],
         " --proposal_distribution ": ["HTqGaussian"],
+        " --distribution ": ["qGaussian"],
         " --info ": ["test_v0/proposal_HTqG_actor_qG_actorloss_KL/"],
     }
     target_agents = ["FTT"]
     target_envs = ["Hopper"]
     target_datasets = ["expert", "medexp"]
-    target_distributions = ["qGaussian"]
-    write_job_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, num_runs=5, comb_num_base=0, prev_file=0, line_per_file=1)
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=0, line_per_file=1)
 
 def all():
     sweep = {
@@ -47,4 +47,4 @@ def all():
 
 
 if __name__ == "__main__":
-    c20240529()
+    c20240607()

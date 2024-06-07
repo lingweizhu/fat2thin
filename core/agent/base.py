@@ -131,14 +131,14 @@ class Base:
         self.test_stats_counter += 1
         self.test_stats_counter = self.test_stats_counter % self.stats_queue_size
 
-    def populate_returns(self, log_traj=False, total_ep=None, initialize=False):
+    def populate_returns(self, log_traj=False, total_ep=None, initialize=False, sampler=None):
         total_ep = self.stats_queue_size if total_ep is None else total_ep
         total_steps = 0
         total_states = []
         total_actions = []
         total_returns = []
         for ep in range(total_ep):
-            ep_return, steps, traj = self.eval_episode(log_traj=log_traj)
+            ep_return, steps, traj = self.eval_episode(log_traj=log_traj, sampler=sampler)
             total_steps += steps
             total_states += traj[0]
             total_actions += traj[1]
@@ -155,14 +155,14 @@ class Base:
                 raise NotImplementedError
         return [total_states, total_actions, total_returns]
 
-    def eval_episode(self, log_traj=False):
+    def eval_episode(self, log_traj=False, sampler=None):
         ep_traj = []
         state = self.eval_env.reset()
         total_rewards = 0
         ep_steps = 0
         done = False
         while True:
-            action = self.eval_step(state)
+            action = self.eval_step(state, sampler=sampler)
             last_state = state
             state, reward, done, _ = self.eval_env.step(action)
             if log_traj:
@@ -185,7 +185,7 @@ class Base:
                 states.insert(0, s)
         return total_rewards, ep_steps, [states, actions, rets]
 
-    def eval_step(self, o):
+    def eval_step(self, o, sampler=None):
         raise NotImplementedError
 
     def log_return(self, log_ary, name, elapsed_time):
@@ -269,10 +269,13 @@ class ActorCritic(Base):
             q1q2 = DoubleCriticNetwork(device, state_dim, action_dim, [hidden_units] * 2)
         return q1q2
 
-    def eval_step(self, o):
+    def eval_step(self, o, sampler=None):
         o = torch_utils.tensor(self.state_normalizer(o).reshape((1, -1)), self.device)
         with torch.no_grad():
-            a, _ = self.ac.pi.sample(o, deterministic=False)
+            if sampler is None:
+                a, _ = self.ac.pi.sample(o, deterministic=False)
+            else:
+                a, _ = sampler.sample(o, deterministic=False)
         a = torch_utils.to_np(a)
         return a
 

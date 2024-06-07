@@ -37,17 +37,16 @@ def generate_cmd(flag_collection, base="python run_ac_offline.py "):
     return cmd
 
 # def generate_flag_combinations(sweep_parameters):
-def write_job_scripts(sweep_params, target_agents, target_envs, target_datasets, target_distributions, num_runs=5, run_base=0, comb_num_base=0, prev_file=0, line_per_file=1):
+def write_job_scripts(sweep_params, target_agents, target_envs, target_datasets, num_runs=5, run_base=0, comb_num_base=0, prev_file=0, line_per_file=1):
     agent_parameters = copy.deepcopy(DEFAULT_AGENT)
     cmds = []
-    aedd_comb = list(itertools.product(target_agents, target_envs, target_datasets, target_distributions))
-    for aedd in aedd_comb:
-        agent, env, dataset, dist = aedd
+    aed_comb = list(itertools.product(target_agents, target_envs, target_datasets))
+    for aed in aed_comb:
+        agent, env, dataset = aed
         kwargs = {}
         kwargs[" --agent "] = agent
         kwargs[" --env_name "] = env
         kwargs[" --dataset "] = dataset
-        kwargs[" --distribution "] = dist
         kwargs.update(DEFAULT_ENV[env])
 
         # if agent in agent_parameters["{}-{}".format(env, dataset)]:
