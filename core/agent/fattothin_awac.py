@@ -9,23 +9,6 @@ from core.utils import torch_utils
 
 
 class FatToThinQGaussianAWAC(base.ActorCritic):
-    # def __init__(self,
-    #              discrete_action: bool,
-    #              action_dim: int,
-    #              state_dim: int,
-    #              gamma: float,
-    #              batch_size: float,
-    #              alpha: float,
-    #              device: torch.device,
-    #              behavior_policy: torch.nn.Module,
-    #              proposal_policy: torch.nn.Module,
-    #              critic: torch.nn.Module,
-    #              replay_buffer: torch.nn.Module,
-    #              rho: float,
-    #              n_action_proposals: float,
-    #              entropic_index: float,
-    #              ) -> None:
-    #     super().__init__()
     def __init__(self, cfg):
         super(FatToThinQGaussianAWAC, self).__init__(cfg)
         self.discrete_action = cfg.discrete_control
@@ -33,6 +16,14 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         self.state_dim = cfg.state_dim
         self.alpha = cfg.tau
 
+        """
+        -------- actor policy ------- 
+        *GAC style 
+        E_{a ~ pi_{actor}} [-ln pi_{actor}(a|s) - ln pi_{proposal}(a|s)]
+
+        SPOT style
+        E_{a ~ pi_{proposal}} [-Q{actor}(a|s) - ln pi_{proposal}(a|s)]
+        """
         if self.cfg.actor_loss == "MaxLikelihood":
             self.calculate_actor_loss = self.actor_maxlikelihood
         elif self.cfg.actor_loss == "KL":
@@ -66,25 +57,6 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         else:
             return torch.maximum(torch.FloatTensor([0.]), 1 + (1 - q) * inputs) ** (1/(1-q))
 
-    # def _log_q(self, inputs, q):
-    #     if q == 1:
-    #         return torch.log(inputs)
-    #     else:
-    #         return (inputs ** (1-q) - 1) / (1 - q)
-
-    # @torch.no_grad()
-    # def act(self, state: Float[np.ndarray, "state_dim"], greedy: bool=False) -> Float[np.ndarray, "action_dim"]:
-    #     state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-    #     action, _, action_mean = self.bp.sample(state)
-    #     act = action.detach().cpu().numpy()[0]
-    #     if greedy:
-    #         act = action_mean.detach().cpu().numpy()[0]
-    #     if not self.discrete_action:
-    #         return act
-    #     else:
-    #         return int(act[0])
-
-
     def update_value(self, data):
         """L_{\phi}, learn z for state value, v = tau log z"""
         states = data['obs']
@@ -104,25 +76,14 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         state_batch, action_batch, reward_batch, next_state_batch, dones = (
             data['obs'], data['act'], data['reward'], data['obs2'], data['done'])
 
-        # When updating Q functions, we don't want to backprop through the
-        # policy and target network parameters
-        # next_state_action, _, _ = self.bp.policy.sample(next_state_batch)
-
         # next_state_action, _ = self.ac.pi.sample(next_state_batch) # TODO: try to use proposal
         next_state_action, _ = self.proposal.sample(next_state_batch)
 
-        # with torch.no_grad():
-        #     next_q = self.critic.target_net(next_state_batch, next_state_action)
-        #     target_q_value = reward_batch + mask_batch * self.gamma * next_q
         next_q, _, _ = self.get_q_value_target(next_state_batch, next_state_action)
         target_q_value = reward_batch + self.gamma * (1 - dones) * next_q
 
-        # q_value = self.critic.value_net(state_batch, action_batch)
         minq, q1, q2 = self.get_q_value(state_batch, action_batch, with_grad=True)
 
-        # Calculate the loss on the critic
-        # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
-        # q_loss = F.mse_loss(target_q_value, q_value)
         critic1_loss = (0.5 * (target_q_value - q1) ** 2).mean()
         critic2_loss = (0.5 * (target_q_value - q2) ** 2).mean()
         q_loss = (critic1_loss + critic2_loss) * 0.5
@@ -148,25 +109,6 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         stacked_s_batch = state_batch.repeat_interleave(top_action, dim=0)
         best_actions = torch.reshape(best_actions, (-1, self.action_dim))
         return stacked_s_batch_full, stacked_s_batch, best_actions
-    # def _get_best_actions(self, state_batch, action_batch):
-    #     action_batch = action_batch.permute(1, 0, 2)
-    #     action_batch = action_batch.reshape(self.batch_size * self.n_action_proposals, self.action_dim)
-    #     stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
-    #     # Get the values of the sampled actions and find the best rho * n_action_proposals actions
-    #     with torch.no_grad():
-    #         q_values = self.critic.value_net(stacked_s_batch_full, action_batch)
-    #     q_values = q_values.reshape(self.batch_size, self.n_action_proposals, 1)
-    #     sorted_q = torch.argsort(q_values, dim=1, descending=True)
-    #     best_ind = sorted_q[:, :int(self.rho * self.n_action_proposals)]
-    #     best_ind = best_ind.repeat_interleave(self.action_dim, -1)
-    #     action_batch = action_batch.reshape(self.batch_size, self.n_action_proposals, self.action_dim)
-    #     best_actions = torch.gather(action_batch, 1, best_ind)
-    #     # Reshape samples for calculating the loss
-    #     samples = int(self.rho * self.n_action_proposals)
-    #     stacked_s_batch = state_batch.repeat_interleave(samples, dim=0)
-    #     best_actions = torch.reshape(best_actions, (-1, self.action_dim))
-    #
-    #     return stacked_s_batch_full, stacked_s_batch, best_actions
 
     def actor_maxlikelihood(self, state_batch, action_batch):
         action_samples, _ = self.ac.pi.rsample(state_batch)
@@ -207,60 +149,11 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         # actor_loss = -(min_Q + (proposal_logprob * self.alpha)).mean()
         return actor_loss
 
-
-    def update_actor(self, data) -> None:
-        # # Sample a batch from memory
-        # # state_batch, action_batch, reward_batch, next_state_batch, \
-        # #     mask_batch = self.buffer.sample(batch_size=self.batch_size)
-        # # if state_batch is None:
-        # #     # Too few samples in the buffer to sample
-        # #     return
-        # state_batch, action_batch = data['obs'], data['act']
-        # # stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
-        # # sample_actions, _ = self.proposal.sample(stacked_s_batch_full)
-        # # _, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, sample_actions)
-        # stacked_s_batch = state_batch
-        # best_actions = action_batch
-        #
-        # """
-        # -------- proposal policy -------
-        # proposal loss:
-        # E_{pi_{old}} [ -exp_q( Q - V ) * ln pi_{proposal}} ]
-        #
-        # pi_{old} may be replay buffer or dataset
-        #
-        # when q values negative, always choose q > 1
-        # q - q.max, choose q > 1
-        # q - q.min, choose q < 1
-        # when q - q.mean, both
-        # """
-        # # with torch.no_grad():
-        # #     best_q_values = self.critic.value_net(stacked_s_batch, best_actions)
-        # best_q_values, _, _ = self.get_q_value(stacked_s_batch, best_actions, with_grad=False)
-        #
-        # # proposal_logprobs = self.pp.policy.log_prob(stacked_s_batch, best_actions)
-        # proposal_logprobs = self.proposal.log_prob(stacked_s_batch, best_actions)
-        #
-        # baseline_dim = 1 if best_q_values.shape[1] > 1 else 0
-        # if self.entropic_index >= 1:
-        #     baseline = best_q_values.max(dim=1, keepdim=True)[0]
-        # # elif self.entropic_index < 1:
-        # else:
-        #     # use mean to filter out half of bad losses
-        #     baseline = best_q_values.mean(dim=baseline_dim, keepdim=True)[0]
-        #
-        # exp_q_scale = self._exp_q((best_q_values - baseline) / self.alpha, q=self.entropic_index)
-        # proposal_loss = - torch.mean(exp_q_scale * proposal_logprobs)
-        #
-        # # self.pp.optimizer.zero_grad()
-        # self.proposal_optimizer.zero_grad()
-        # proposal_loss.backward()
-        # self.proposal_optimizer.step()
-
+    def update_proposal(self, data):
         state_batch, action_batch = data['obs'], data['act']
         log_probs = self.proposal.log_prob(state_batch, action_batch)
         min_Q, q1, q2 = self.get_q_value(state_batch, action_batch, with_grad=False)
-        baseline_dim = 1 if min_Q.shape[1] > 1 else 0
+        # baseline_dim = 1 if min_Q.shape[1] > 1 else 0
         # if self.entropic_index >= 1:
         #     baseline = min_Q.max(dim=1, keepdim=True)[0]
         # # elif self.entropic_index < 1:
@@ -277,15 +170,8 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
         pi_loss.backward()
         self.proposal_optimizer.step()
 
-        """
-        -------- actor policy ------- 
-        *GAC style 
-        E_{a ~ pi_{actor}} [-ln pi_{actor}(a|s) - ln pi_{proposal}(a|s)]
-
-        SPOT style
-        E_{a ~ pi_{proposal}} [-Q{actor}(a|s) - ln pi_{proposal}(a|s)]
-        """
-
+    def update_actor(self, data):
+        state_batch, action_batch = data['obs'], data['act']
         actor_loss = self.calculate_actor_loss(state_batch, action_batch)
         self.pi_optimizer.zero_grad()
         actor_loss.backward()
@@ -296,6 +182,7 @@ class FatToThinQGaussianAWAC(base.ActorCritic):
     def update(self, data):
         self.update_value(data)
         self.update_critic(data)
+        self.update_proposal(data)
         self.update_actor(data)
         if self.use_target_network and self.total_steps % self.target_network_update_freq == 0:
             self.sync_target()
