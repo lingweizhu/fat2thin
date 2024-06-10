@@ -145,6 +145,7 @@ class MLPCont(nn.Module):
             pi_action = dist.sample()
         with torch.no_grad():
             logp_pi = dist.log_prob(pi_action).sum(axis=-1, keepdim=True)
+        logp_pi = logp_pi.view((logp_pi.shape[0], 1))
         return pi_action, logp_pi
 
     def log_prob(self, obs, actions):
@@ -195,5 +196,6 @@ class MLPDiscrete(nn.Module):
         probs = F.softmax(probs, dim=1)
         m = Categorical(probs)
         logp_pi = m.log_prob(actions)
+        logp_pi = logp_pi.view(-1, 1)
         return logp_pi
     

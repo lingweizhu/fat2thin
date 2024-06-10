@@ -83,7 +83,7 @@ if __name__ == '__main__':
         agent_obj = AWAC(cfg)
     elif cfg.agent == "FTT":
         agent_obj = FatToThin(cfg)
-    elif cfg.agent == "TTT_AWAC":
+    elif cfg.agent == "TTT":
         agent_obj = TsallisAwacTklLoss(cfg)
     else:
         raise NotImplementedError

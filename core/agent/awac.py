@@ -38,7 +38,7 @@ class AWAC(base.ActorCritic):
         _, q1, q2 = self.get_q_value(o, a, with_grad=True)
         with torch.no_grad():
             # Target actions come from *current* policy
-            a2, logp_a2 = self.ac.pi.sample(op)
+            a2, _ = self.ac.pi.sample(op)
         q_pi_targ, _, _ = self.get_q_value_target(op, a2)
         backup = r + self.gamma * (1 - d) * (q_pi_targ)
 

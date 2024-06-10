@@ -15,10 +15,23 @@ class TsallisAwacTklLoss(base.ActorCritic):
         self.alpha = cfg.tau
         self.rho = cfg.rho
         self.entropic_index = 0 #1. / cfg.tsallis_q
-        self.loss_entropic_index = 0.5 #cfg.tsallis_q#TODO: a different number
+        self.loss_entropic_index = 0.5
         self.n_action_proposals = 10
-        self.ratio_threshold = 0.2 #ratio_threshold
+        self.ratio_threshold = 0.99
         self.fdiv_name = "jensen_shannon"
+        self.beh_pi = self.get_policy_func(cfg.discrete_control, cfg)
+        self.beh_pi_optimizer = torch.optim.Adam(list(self.beh_pi.parameters()), cfg.pi_lr)
+
+    def update_beh_pi(self, data):
+        """L_{\omega}, learn behavior policy"""
+        states, actions = data['obs'], data['act']
+        beh_log_probs = self.beh_pi.log_prob(states, actions)
+        beh_loss = -beh_log_probs.mean()
+        # print("beh", beh_log_probs.size())
+        self.beh_pi_optimizer.zero_grad()
+        beh_loss.backward()
+        self.beh_pi_optimizer.step()
+        return
 
     def _exp_q(self, inputs, q):
         if self.entropic_index == 1:
@@ -38,68 +51,53 @@ class TsallisAwacTklLoss(base.ActorCritic):
             (data['obs'], data['act'], data['reward'], data['obs2'], 1 - data['done'])
         # When updating Q functions, we don't want to backprop through the
         # policy and target network parameters
-        next_state_action, _ = self.ac.pi.sample(next_state_batch)
-        next_q, _, _ = self.get_q_value_target(next_state_batch, next_state_action)
+        next_action, logprobs = self.ac.pi.sample(next_state_batch)
+        next_q, _, _ = self.get_q_value_target(next_state_batch, next_action)
         with torch.no_grad():
-            # next_q = self.critic.target_net(next_state_batch, next_state_action)
-            log_base_policy = self.ac.pi.log_prob(next_state_batch, action_batch)
-            _, logprobs = self.ac.pi.sample(next_state_batch)
-            policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
-            policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
-            fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=7)
-            """
-            we are minimizing distance to a TKL policy
-            fdiv = TKL = -pi * ln_q mu/pi
-            r - TKL = r + ln_q mu/pi
-            """
-            target_q_value = reward_batch + mask_batch * self.gamma * (next_q - self.alpha * fdiv)
-            # target_q_value = reward_batch + mask_batch * self.gamma * next_q   
+            log_base_policy = self.beh_pi.log_prob(next_state_batch, next_action)
+        policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
+        policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+        fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=1)
+        """
+        we are minimizing distance to a TKL policy
+        fdiv = TKL = -pi * ln_q mu/pi
+        r - TKL = r + ln_q mu/pi
+        """
+        target_q_value = reward_batch + mask_batch * self.gamma * (next_q - self.alpha * fdiv)
         _, q1, q2 = self.get_q_value(state_batch, action_batch, with_grad=True)
         # Calculate the loss on the critic
-        # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
-        # q_loss = F.mse_loss(target_q_value, q_value)
         critic1_loss = (0.5 * (target_q_value - q1) ** 2).mean()
         critic2_loss = (0.5 * (target_q_value - q2) ** 2).mean()
         q_loss = (critic1_loss + critic2_loss) * 0.5
+        # print(target_q_value.mean(), policy_ratio.mean(), fdiv.mean())
         # Update the critic
         self.q_optimizer.zero_grad()
         q_loss.backward()
         self.q_optimizer.step()
-        # print(reward_batch.size(), mask_batch.size(), next_q.size(), fdiv.size(), target_q_value.size(), q1.size(), q2.size())
+        # print("Q", reward_batch.size(), mask_batch.size(), next_q.size(), logprobs.size(), log_base_policy.size(), policy_ratio.size(), fdiv.size(), target_q_value.size(), q1.size(), q2.size())
         return
 
-    def update_actor(self, data):
+    def _get_best_actions(self, state_batch, stacked_s_batch_full, sample_actions):
+        batch_size = state_batch.shape[0]
+        top_action = int(self.rho * self.n_action_proposals)
 
+        q_values, _, _ = self.get_q_value(stacked_s_batch_full, sample_actions, with_grad=False)
+        q_values = q_values.reshape(batch_size, self.n_action_proposals, 1)
+        sorted_q = torch.argsort(q_values, dim=1, descending=True)
+        best_ind = sorted_q[:, :top_action]
+        best_ind = best_ind.repeat_interleave(self.action_dim, -1)
+        sample_actions = sample_actions.reshape(batch_size, self.n_action_proposals,
+                                                self.action_dim)
+        best_actions = torch.gather(sample_actions, 1, best_ind)
+        stacked_s_batch = state_batch.repeat_interleave(top_action, dim=0)
+        best_actions = torch.reshape(best_actions, (-1, self.action_dim))
+        return stacked_s_batch_full, stacked_s_batch, best_actions
+
+    def update_actor(self, data):
         state_batch, old_action_batch, reward_batch, next_state_batch, mask_batch = \
             (data['obs'], data['act'], data['reward'], data['obs2'], 1 - data['done'])
-        # action_batch, _, _, = self.actor.policy.sample(state_batch, self.n_action_proposals)
-        stacked_s_batch = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
-        action_batch, _ = self.ac.pi.sample(stacked_s_batch)
 
-        samples = int(self.rho * self.n_action_proposals)
-        q_values, _, _ = self.get_q_value(stacked_s_batch, action_batch, with_grad=False)
-        q_values = q_values.reshape(self.batch_size, self.n_action_proposals, 1)
-        sorted_q = torch.argsort(q_values, dim=1, descending=True)
-
-        best_ind = sorted_q[:, :samples]
-        best_ind = best_ind.repeat_interleave(self.action_dim, -1)
-        action_batch = action_batch.reshape(self.batch_size, self.n_action_proposals, self.action_dim)
-        best_actions = torch.gather(action_batch, 1, best_ind)
-        # Reshape samples for calculating the loss
-
-        stacked_s_batch = state_batch.repeat_interleave(samples, dim=0)
-        stacked_old_a_batch = old_action_batch.repeat_interleave(samples, dim=0)
-        best_actions = torch.reshape(best_actions, (-1, self.action_dim))
-
-        # with torch.no_grad():
-        #     best_q_values = self.critic.value_net(stacked_s_batch, best_actions)
-        #     log_base_policy = self.actor.policy.log_prob(stacked_s_batch, stacked_old_a_batch)
-        best_q_values, _, _ = self.get_q_value(stacked_s_batch, best_actions, with_grad=False)
-        with torch.no_grad():
-            log_base_policy = self.ac.pi.log_prob(stacked_s_batch, stacked_old_a_batch)
-
-        logprobs = self.ac.pi.log_prob(stacked_s_batch, best_actions)
-
+        best_q_values, _, _ = self.get_q_value(state_batch, old_action_batch, with_grad=False)
         """
         when q values negative, always choose q > 1
         q - q.max, choose q > 1
@@ -121,14 +119,18 @@ class TsallisAwacTklLoss(base.ActorCritic):
         Tsallis KL as loss function
         TKL(a|b) = E_a [-ln_q b/a] 
         """
+        logprobs = self.ac.pi.log_prob(state_batch, old_action_batch)
+        with torch.no_grad():
+            log_base_policy = self.beh_pi.log_prob(state_batch, old_action_batch)
         policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
         policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
         # logq_ratio = self._log_q(policy_ratio, q=self.loss_entropic_index)
         # policy_loss = - torch.mean(exp_q_scale * logq_ratio)
         # fdiv = torch.clamp(self._forwardkl_neglnt(policy_ratio), -1/self.ratio_threshold, 1/self.ratio_threshold)
         exp_q_scale = self._exp_q((best_q_values - baseline) / self.alpha, q=self.entropic_index)
-        fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=7)
+        fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=1)
         policy_loss = -torch.mean(exp_q_scale * fdiv)
+        # print("pi", logprobs.shape, log_base_policy.shape, baseline.shape, policy_ratio.shape, best_q_values.shape, baseline.shape, exp_q_scale.shape, fdiv.shape)
 
         self.pi_optimizer.zero_grad()
         policy_loss.backward()
@@ -182,6 +184,7 @@ class TsallisAwacTklLoss(base.ActorCritic):
 
     
     def update(self, data):
+        self.update_beh_pi(data)
         self.update_critic(data)
         self.update_actor(data)
         if self.use_target_network and self.total_steps % self.target_network_update_freq == 0:
@@ -193,6 +196,7 @@ class TsallisAwacTklLoss(base.ActorCritic):
         params = {
             "actor_net": self.ac.pi.state_dict(),
             "critic_net": self.ac.q1q2.state_dict(),
+            "behavior_net": self.beh_pi.state_dict(),
         }
         path = os.path.join(parameters_dir, "parameter"+timestamp)
         torch.save(params, path)
@@ -202,3 +206,4 @@ class TsallisAwacTklLoss(base.ActorCritic):
         model = torch.load(path)
         self.ac.pi.load_state_dict(model["actor_net"])
         self.ac.q1q2.load_state_dict(model["critic_net"])
+        self.beh_pi.load_state_dict(model["behavior_net"])

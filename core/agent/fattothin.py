@@ -28,6 +28,8 @@ class FatToThin(base.ActorCritic):
             self.calculate_actor_loss = self.actor_maxlikelihood
         elif self.cfg.actor_loss == "KL":
             self.calculate_actor_loss = self.actor_kl
+        elif self.cfg.actor_loss == "MSE":
+            self.calculate_actor_loss = self.actor_mse
         elif self.cfg.actor_loss == "GAC":
             self.calculate_actor_loss = self.actor_gac
         elif self.cfg.actor_loss == "SPOT":
@@ -37,7 +39,8 @@ class FatToThin(base.ActorCritic):
 
         if cfg.proposal_distribution == "HTqGaussian":
             self.proposal = qHeavyTailedGaussian(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units]*2, cfg.action_min, cfg.action_max, entropic_index=cfg.distribution_param)
-            self.proposal.load_state_dict(self.ac.pi.state_dict())
+            if cfg.distribution == "qGaussian":
+                self.proposal.load_state_dict(self.ac.pi.state_dict())
         elif cfg.proposal_distribution == "Student":
             self.proposal = Student(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units] * 2, cfg.action_min, cfg.action_max, df=cfg.distribution_param)
         else:
@@ -64,11 +67,11 @@ class FatToThin(base.ActorCritic):
         states = data['obs']
         v_phi = self.value_net(states)
         with torch.no_grad():
-            actions, log_probs = self.ac.pi.sample(states)
+            actions, _ = self.ac.pi.sample(states)
             min_Q, _, _ = self.get_q_value_target(states, actions)
         target = min_Q
         value_loss = (0.5 * (v_phi - target) ** 2).mean()
-        # print("v", v_phi.size(), target.size(), min_Q.size(), actions.size(), log_probs.size())
+        # print("v", v_phi.size(), target.size(), min_Q.size(), actions.size())
         self.value_optimizer.zero_grad()
         value_loss.backward()
         self.value_optimizer.step()
@@ -114,16 +117,36 @@ class FatToThin(base.ActorCritic):
 
     def actor_maxlikelihood(self, state_batch, action_batch):
         action_samples, _ = self.ac.pi.rsample(state_batch)
-        with torch.no_grad():
-            proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
+        proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
         actor_loss = -proposal_logprob.mean()
+        # print(proposal_logprob.shape)
         return actor_loss
 
-    def actor_kl(self, state_batch, action_batch):
+    def actor_kl(self, state_batch, action_batch): # TODO: this may need a GAC style update!!!!
         action_samples, logp = self.ac.pi.rsample(state_batch)
         with torch.no_grad():
             proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
         actor_loss = (logp - proposal_logprob).mean()
+        # print(logp.shape, proposal_logprob.shape, (logp - proposal_logprob).shape)
+
+        # print()
+        # print(action_samples.mean(axis=0))
+        # temp, tlogp = self.proposal.sample(state_batch)
+        # print(temp.mean(axis=0))
+        # print(logp.mean(), proposal_logprob.mean(), tlogp.mean())
+        return actor_loss
+
+    def actor_mse(self, state_batch, action_batch):
+        action_samples, _ = self.ac.pi.rsample(state_batch)
+
+        stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
+        proposal_samples, _ = self.proposal.sample(stacked_s_batch_full)
+        stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, proposal_samples)
+        best_actions = best_actions.reshape(len(state_batch), int(self.rho*self.n_action_proposals), self.action_dim)
+        best_actions = best_actions.mean(dim=1)
+        actor_loss = torch.nn.functional.mse_loss(action_samples, best_actions)
+        # print(best_actions.shape, action_samples.shape)
+        # print(actor_loss)
         return actor_loss
 
     def actor_gac(self, state_batch, action_batch):
@@ -134,6 +157,8 @@ class FatToThin(base.ActorCritic):
             proposal_logprob = self.proposal.log_prob(stacked_s_batch, best_actions)
         logp = self.ac.pi.log_prob(stacked_s_batch, best_actions)
         actor_loss = (-logp - proposal_logprob * self.alpha).mean()
+        # print(logp.mean(), proposal_logprob.mean())
+        # print(logp.shape, proposal_logprob.shape, (logp - proposal_logprob).shape)
         return actor_loss
 
     def actor_spot(self, state_batch, action_batch):
@@ -141,7 +166,11 @@ class FatToThin(base.ActorCritic):
         min_Q, _, _ = self.get_q_value(state_batch, action_samples, with_grad=True)
         with torch.no_grad():
             proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
-        actor_loss = -(min_Q + (proposal_logprob * self.alpha)).mean()
+            baseline = self.value_net(state_batch)
+        actor_loss = (-min_Q/baseline - proposal_logprob*self.alpha).mean()
+        # print((min_Q/baseline).mean(), (proposal_logprob*self.alpha).mean())
+        # print(min_Q.shape, baseline.shape, proposal_logprob.shape, (min_Q/baseline + (proposal_logprob * self.alpha)).shape)
+
         # stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
         # action_samples, _ = self.ac.pi.rsample(stacked_s_batch_full)
         # stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
@@ -161,6 +190,7 @@ class FatToThin(base.ActorCritic):
         tsallis_policy = self._exp_q(x, q=self.entropic_index)
         clipped = torch.clip(tsallis_policy, self.eps, self.exp_threshold)
         actor_loss = -(clipped * log_probs).mean()
+        # print(min_Q.shape, baseline.shape, x.shape, tsallis_policy.shape, clipped.shape, log_probs.shape, (clipped * log_probs).shape)
         return actor_loss
 
     def update_proposal(self, data):

@@ -435,6 +435,7 @@ class qMultivariateGaussian(nn.Module):
             actions = actions.squeeze(0)        
         actions = torch.clamp(actions, self.action_min, self.action_max)
         log_probs = self.mvbg.log_prob(actions)
+        log_probs = log_probs.view((log_probs.shape[0], 1))
         # if len(torch.where(actions == 1)[0]) > 0 or len(torch.where(actions == -1)[0])>0:
         #     print("rsample: risky atanh", actions[torch.where(actions == 1)[0]])
         # print("rsam", mean.mean(dim=0), log_probs.mean())
@@ -451,6 +452,7 @@ class qMultivariateGaussian(nn.Module):
         actions = torch.clamp(actions, self.action_min, self.action_max)
         with torch.no_grad():
             log_probs = self.mvbg.log_prob(actions)
+        log_probs = log_probs.view((-1, 1))
         # print("samp", mean.mean(dim=0), log_probs.mean())
         return actions, log_probs
     
@@ -466,6 +468,7 @@ class qMultivariateGaussian(nn.Module):
         closest_actions = support_actions[min_distance, torch.arange(actions.size()[0]), :]
         closest_actions[supported] = actions[supported]
         logp = self.mvbg.log_prob(closest_actions)
+        logp = logp.view(-1, 1)
         return logp
     
 
@@ -656,6 +659,7 @@ class qHeavyTailedGaussian(nn.Module):
         # qgauss_low, qgauss_high = mvbg.loc - mvbg._a, mvbg.loc + mvbg._a
         # actions = torch.clamp(actions, min=torch.max(self.action_min, qgauss_low), max=torch.min(qgauss_high, self.action_max))
         log_probs = hvbg.log_prob(actions)
+        log_probs = log_probs.view((log_probs.shape[0], 1))
         # print(f"outer rsample, action {actions.shape}, log prob {log_probs.shape}")
         return actions, log_probs
 
@@ -667,6 +671,7 @@ class qHeavyTailedGaussian(nn.Module):
             actions = actions.squeeze(0)
         actions = torch.clamp(actions, self.action_min, self.action_max)
         log_probs = hvbg.log_prob(actions)
+        log_probs = log_probs.view((-1, 1))
         # print(f"outer sample, action {actions.shape}, log prob {log_probs.shape}")
         return actions, log_probs
 
@@ -679,6 +684,7 @@ class qHeavyTailedGaussian(nn.Module):
         # if torch.any(torch.isnan(log_probs)) or torch.any(torch.isinf(log_probs)):
         #     from IPython import embed; embed()
         #     raise RuntimeError("NaN detected in log probs!")
+        log_probs = log_probs.view(-1, 1)
         return log_probs
 
     def entropy(self, states):
