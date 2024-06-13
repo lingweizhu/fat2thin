@@ -23,6 +23,7 @@ class TsallisAwacTklLoss(base.ActorCritic):
         self.fdiv_term = int(cfg.fdiv_info[1])
         self.beh_pi = self.get_policy_func(cfg.discrete_control, cfg)
         self.beh_pi_optimizer = torch.optim.Adam(list(self.beh_pi.parameters()), cfg.pi_lr)
+        self.log_clip = False
 
     def update_beh_pi(self, data):
         """L_{\omega}, learn behavior policy"""
@@ -58,7 +59,8 @@ class TsallisAwacTklLoss(base.ActorCritic):
         with torch.no_grad():
             log_base_policy = self.beh_pi.log_prob(next_state_batch, next_action)
         policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
-        policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+        if not self.log_clip:
+            policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
         fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=self.fdiv_term)
 
         """
@@ -126,7 +128,8 @@ class TsallisAwacTklLoss(base.ActorCritic):
         with torch.no_grad():
             log_base_policy = self.beh_pi.log_prob(state_batch, old_action_batch)
         policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
-        policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+        if not self.log_clip:
+            policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
         fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=self.fdiv_term)
 
         exp_q_scale = self._exp_q((best_q_values - baseline) / self.alpha, q=self.entropic_index)
@@ -138,16 +141,20 @@ class TsallisAwacTklLoss(base.ActorCritic):
         self.pi_optimizer.step()
 
     def _logq_change_base(self, ratio, q):
-        # ratio = torch.clamp(self._log_q(ratio, self.loss_entropic_index), 1 - self.ratio_threshold, 1 + self.ratio_threshold)
-        # return ((1 + (1-self.loss_entropic_index)*ratio) ** ((1-q)/(1-self.loss_entropic_index)) - 1) / (1-q)
-        return ((1 + (1-self.loss_entropic_index)*self._log_q(ratio, self.loss_entropic_index)) ** ((1-q)/(1-self.loss_entropic_index)) - 1) / (1-q)
+        if self.log_clip:
+            ratio = torch.clamp(self._log_q(ratio, self.loss_entropic_index), 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+            return ((1 + (1-self.loss_entropic_index)*ratio) ** ((1-q)/(1-self.loss_entropic_index)) - 1) / (1-q)
+        else:
+            return ((1 + (1-self.loss_entropic_index)*self._log_q(ratio, self.loss_entropic_index)) ** ((1-q)/(1-self.loss_entropic_index)) - 1) / (1-q)
 
 
     def fdiv(self, ratio, fname, num_terms=5):
 
         if num_terms < 2:
-            # return torch.clamp(self._log_q(ratio, self.loss_entropic_index), 1 - self.ratio_threshold, 1 + self.ratio_threshold)
-            return self._log_q(ratio, self.loss_entropic_index)
+            if self.log_clip:
+                return torch.clamp(self._log_q(ratio, self.loss_entropic_index), 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+            else:
+                return self._log_q(ratio, self.loss_entropic_index)
 
         if fname == "forwardkl":
             series = 0.5 * self._logq_change_base(ratio, 2)
