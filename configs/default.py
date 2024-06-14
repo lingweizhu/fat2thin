@@ -1,4 +1,11 @@
 DEFAULT_ENV = {
+    "Ant": {
+        " --discrete_control ": 0,
+        " --state_dim ": 111,
+        " --action_dim ": 8,
+        " --action_min ": -1,
+        " --action_max ": 1,
+    },
     "HalfCheetah": {
         " --discrete_control ": 0,
         " --state_dim ": 17,

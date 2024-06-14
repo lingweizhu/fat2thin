@@ -19,3 +19,5 @@ def get_continuous_policy(name, cfg):
         return Student(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units] * 2, cfg.action_min, cfg.action_max, df=cfg.distribution_param)
     elif name == "Beta":
         return Beta(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units] * 2, cfg.action_min, cfg.action_max)
+    else:
+        raise NotImplementedError

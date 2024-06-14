@@ -14,23 +14,50 @@ class TsallisAwacTklLoss(base.ActorCritic):
         self.gamma = cfg.gamma
         self.alpha = cfg.tau
         self.rho = cfg.rho
-        self.entropic_index = 0 #1. / cfg.tsallis_q
-        # self.loss_entropic_index = 2./3.
-        self.loss_entropic_index = 0.5
         self.n_action_proposals = 10
-        self.ratio_threshold = 0.99
+        self.ratio_threshold = 0.2
         self.fdiv_name = cfg.fdiv_info[0]
         self.fdiv_term = int(cfg.fdiv_info[1])
         self.beh_pi = self.get_policy_func(cfg.discrete_control, cfg)
         self.beh_pi_optimizer = torch.optim.Adam(list(self.beh_pi.parameters()), cfg.pi_lr)
         self.log_clip = False
 
+        self.entropic_index = 0.5
+        self.loss_entropic_index = 0
+        # self.entropic_index = 0
+        # self.loss_entropic_index = 0.5
+        if self.loss_entropic_index == 0.:
+            self.clamp_ratio = self.clamp_ratio_0
+        elif self.loss_entropic_index == 0.5:
+            self.clamp_ratio = self.clamp_ratio_1_2
+        elif self.loss_entropic_index == 2./3.:
+            self.clamp_ratio = self.clamp_ratio_2_3
+        else:
+            raise NotImplementedError
+
+    def clamp_ratio_0(self, ratio):
+        return torch.clamp(ratio, min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.
+
+    def clamp_ratio_1_2(self, ratio):
+        ret = 2.0 * (torch.clamp(torch.sqrt(ratio), min=1-self.ratio_threshold, max=1+self.ratio_threshold)
+                      - 1.)
+        return ret
+
+    def clamp_ratio_2_3(self, ratio):
+        return 3.0 * (torch.clamp(ratio**(1/3), min=1-self.ratio_threshold, max=1+self.ratio_threshold)
+                      - 1.)
+
+    def clamp_ratio_3_4(self, ratio):
+        return 4.0 * (torch.clamp(ratio**(1/4), min=1-self.ratio_threshold, max=1+self.ratio_threshold)
+                      - 1.)
+
+
     def update_beh_pi(self, data):
         """L_{\omega}, learn behavior policy"""
         states, actions = data['obs'], data['act']
         beh_log_probs = self.beh_pi.log_prob(states, actions)
         beh_loss = -beh_log_probs.mean()
-        # print("beh", beh_log_probs.size())
+        # print("beh", beh_log_probs.size(), beh_loss)
         self.beh_pi_optimizer.zero_grad()
         beh_loss.backward()
         self.beh_pi_optimizer.step()
@@ -42,11 +69,11 @@ class TsallisAwacTklLoss(base.ActorCritic):
         else:
             return torch.maximum(torch.FloatTensor([0.]), 1 + (1 - q) * inputs) ** (1/(1-q))
 
-    def _log_q(self, inputs, q):
-        if q == 1:
-            return torch.log(inputs)
-        else:
-            return (inputs ** (1-q) - 1) / (1 - q)
+    # def _log_q(self, inputs, q):
+    #     if q == 1:
+    #         return torch.log(inputs)
+    #     else:
+    #         return (inputs ** (1-q) - 1) / (1 - q)
     
 
     def update_critic(self, data):
@@ -56,19 +83,20 @@ class TsallisAwacTklLoss(base.ActorCritic):
         # policy and target network parameters
         next_action, logprobs = self.ac.pi.sample(next_state_batch)
         next_q, _, _ = self.get_q_value_target(next_state_batch, next_action)
-        with torch.no_grad():
-            log_base_policy = self.beh_pi.log_prob(next_state_batch, next_action)
-        policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
-        if not self.log_clip:
-            policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
-        fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=self.fdiv_term)
+        # with torch.no_grad():
+        #     log_base_policy = self.beh_pi.log_prob(next_state_batch, next_action)
+        # policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
+        # # if not self.log_clip:
+        # #     policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+        # fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=self.fdiv_term)
 
         """
         we are minimizing distance to a TKL policy
         fdiv = TKL = -pi * ln_q mu/pi
         r - TKL = r + ln_q mu/pi
         """
-        target_q_value = reward_batch + mask_batch * self.gamma * (next_q - self.alpha * fdiv)
+        # target_q_value = reward_batch + mask_batch * self.gamma * (next_q - self.alpha * fdiv)
+        target_q_value = reward_batch + mask_batch * self.gamma * next_q
         _, q1, q2 = self.get_q_value(state_batch, action_batch, with_grad=True)
         # Calculate the loss on the critic
         critic1_loss = (0.5 * (target_q_value - q1) ** 2).mean()
@@ -79,6 +107,8 @@ class TsallisAwacTklLoss(base.ActorCritic):
         self.q_optimizer.zero_grad()
         q_loss.backward()
         self.q_optimizer.step()
+        # print(torch.where(torch.isnan(next_q)), torch.where(torch.isnan(q1)), torch.where(torch.isnan(q2)))
+        # print("critic", q_loss)
         # print("Q", reward_batch.size(), mask_batch.size(), next_q.size(), logprobs.size(), log_base_policy.size(), policy_ratio.size(), fdiv.size(), target_q_value.size(), q1.size(), q2.size())
         return
 
@@ -128,62 +158,86 @@ class TsallisAwacTklLoss(base.ActorCritic):
         with torch.no_grad():
             log_base_policy = self.beh_pi.log_prob(state_batch, old_action_batch)
         policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
-        if not self.log_clip:
-            policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+        # if not self.log_clip:
+        #     policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
         fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=self.fdiv_term)
 
         exp_q_scale = self._exp_q((best_q_values - baseline) / self.alpha, q=self.entropic_index)
         policy_loss = -torch.mean(exp_q_scale * fdiv)
-        # print(policy_ratio.mean(), fdiv.mean(), policy_loss, best_q_values.mean())
+        # print(torch.where(torch.isnan(best_q_values)))
+        # print(torch.where(torch.isnan(fdiv)))
+        # print("actor", policy_ratio.mean(), fdiv.mean(), best_q_values.mean(), policy_loss)
+        # print()
 
         self.pi_optimizer.zero_grad()
         policy_loss.backward()
         self.pi_optimizer.step()
 
     def _logq_change_base(self, ratio, q):
-        if self.log_clip:
-            ratio = torch.clamp(self._log_q(ratio, self.loss_entropic_index), 1 - self.ratio_threshold, 1 + self.ratio_threshold)
-            return ((1 + (1-self.loss_entropic_index)*ratio) ** ((1-q)/(1-self.loss_entropic_index)) - 1) / (1-q)
-        else:
-            return ((1 + (1-self.loss_entropic_index)*self._log_q(ratio, self.loss_entropic_index)) ** ((1-q)/(1-self.loss_entropic_index)) - 1) / (1-q)
+        # if self.log_clip:
+        #     ratio = torch.clamp(self._log_q(ratio, self.loss_entropic_index), 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+        #     return ((1 + (1-self.loss_entropic_index)*ratio) ** ((1-q)/(1-self.loss_entropic_index)) - 1) / (1-q)
+        # else:
+        #     return ((1 + (1-self.loss_entropic_index)*self._log_q(ratio, self.loss_entropic_index)) ** ((1-q)/(1-self.loss_entropic_index)) - 1) / (1-q)
+        ret = ((1 + (1 - self.loss_entropic_index) * self.clamp_ratio(ratio)) ** (
+                            (1 - q) / (1 - self.loss_entropic_index)) - 1) / (1 - q)
+        return ret
 
 
     def fdiv(self, ratio, fname, num_terms=5):
 
         if num_terms < 2:
-            if self.log_clip:
-                return torch.clamp(self._log_q(ratio, self.loss_entropic_index), 1 - self.ratio_threshold, 1 + self.ratio_threshold)
-            else:
-                return self._log_q(ratio, self.loss_entropic_index)
+            # if self.log_clip:
+            #     return torch.clamp(self._log_q(ratio, self.loss_entropic_index), 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+            # else:
+            #     return self._log_q(ratio, self.loss_entropic_index)
+            return self.clamp_ratio(ratio)
 
         if fname == "forwardkl":
             series = 0.5 * self._logq_change_base(ratio, 2)
-            for q in range(3, num_terms):
+            for q in range(3, num_terms+1):
                 series +=  (-1)**q / q * self._logq_change_base(ratio, q)
 
         elif fname == "backwardkl":
             series = 0.5 * self._logq_change_base(ratio, 2)
-            for q in range(3, num_terms):
+            for q in range(3, num_terms+1):
                 series +=  (-1)**q * (q-1) / q * self._logq_change_base(ratio, q)
 
         elif fname == "jeffrey":
             series = self._logq_change_base(ratio, 2)
-            for q in range(3, num_terms):
+            for q in range(3, num_terms+1):
                 series +=  (-1)**q * self._logq_change_base(ratio, q)
+            # print(series.mean())
 
         elif fname == "jensen_shannon":
+            temp = [ratio.mean()]
             series = 0.
-            for q in range(3, num_terms):
-                series +=  (-1)**q * (1 - 0.5**(q-2)) / q * self._logq_change_base(ratio, q)
+            for q in range(3, num_terms+1):
+                term = (-1)**q * (1 - 0.5**(q-2)) / q * self._logq_change_base(ratio, q)
+                series += term
+                temp.append("logp={:.6f}".format(self._logq_change_base(ratio, q).detach().mean()))
+                temp.append("term={:.6f}".format(term.detach().mean()))
+            # print(temp)
+            # print(series.mean())
 
         elif fname == "gan":
-            series = 0.25 * self._logq_change_base(ratio, 2)
-            for q in range(3, num_terms):
-                series +=  (-1)**q * (1 - 0.5**(q-1)) / q * self._logq_change_base(ratio, q)
+            # series = 0.25 * self._logq_change_base(ratio, 2)
+            # for q in range(3, num_terms):
+            #     series +=  (-1)**q * (1 - 0.5**(q-1)) / q * self._logq_change_base(ratio, q)
+            # # print(series.mean())
+            series = 0.
+            # temp = [ratio.mean()]
+            for q in range(2, num_terms+1):
+                term = (-1)**q * (1 - 0.5**(q-1)) / q * self._logq_change_base(ratio, q)
+                series += term
+                # temp.append("logp={:.6f}".format(self._logq_change_base(ratio, q).detach().mean()))
+                # temp.append("term={:.6f}".format(term.detach().mean()))
+            # print(temp)
+            # print(series.mean())
         else:
             # case _:
                 raise NotImplementedError
-            
+        # series /= series.detach().max()
         return series
 
     

@@ -85,15 +85,15 @@ def c20240609():
     target_envs = ["Hopper"]
     target_datasets = ["medexp"]
 
-    sweep = {
-        " --pi_lr ": [1e-3, 3e-4],
-        " --tau ": [1.0, 0.5, 0.1],
-        " --q_lr_prob ": [1.],
-        " --distribution ": ["Student"],
-        " --fdiv_info ": ['gan 7'],
-        " --info ": ["test_v0/test_TTT/actor_Student/fdiv_7_gan/"],
-    }
-    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=0, prev_file=0, line_per_file=1)
+    # sweep = {
+    #     " --pi_lr ": [1e-3, 3e-4],
+    #     " --tau ": [1.0, 0.5, 0.1],
+    #     " --q_lr_prob ": [1.],
+    #     " --distribution ": ["Student"],
+    #     " --fdiv_info ": ['gan 7'],
+    #     " --info ": ["test_v0/test_TTT/actor_Student/fdiv_7_gan/"],
+    # }
+    # write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=0, prev_file=0, line_per_file=1)
 
     sweep = {
         " --pi_lr ": [1e-3, 3e-4],
@@ -165,6 +165,59 @@ def c20240609():
     # }
     # write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=0, prev_file=60, line_per_file=1)
 
+def c20240613():
+    target_agents = ["TTT"]
+    target_envs = ["Ant"]
+    target_datasets = ["expert"]
+
+    sweep = {
+        " --pi_lr ": [3e-4, 1e-4],
+        " --tau ": [1.0],
+        " --q_lr_prob ": [1.],
+        " --distribution ": ["Student", "SGaussian"],
+        " --max_steps ": [100000],
+        " --log_interval ": [1000]
+    }
+    sweep[" --fdiv_info "] = ['jensen_shannon 3']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_3_js/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=0, line_per_file=3)
+    sweep[" --fdiv_info "] = ['jensen_shannon 4']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_4_js/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=4, line_per_file=3)
+    sweep[" --fdiv_info "] = ['jensen_shannon 5']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_5_js/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=8, line_per_file=3)
+    sweep[" --fdiv_info "] = ['jensen_shannon 6']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_6_js/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=12, line_per_file=3)
+
+    sweep[" --fdiv_info "] = ['gan 3']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_3_gan/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=16, line_per_file=3)
+    sweep[" --fdiv_info "] = ['gan 4']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_4_gan/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=20, line_per_file=3)
+    sweep[" --fdiv_info "] = ['gan 5']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_5_gan/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=24, line_per_file=3)
+    sweep[" --fdiv_info "] = ['gan 6']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_6_gan/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=28, line_per_file=3)
+
+    sweep[" --fdiv_info "] = ['jeffrey 3']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_3_jeffrey/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=32, line_per_file=3)
+    sweep[" --fdiv_info "] = ['jeffrey 4']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_4_jeffrey/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=36, line_per_file=3)
+    sweep[" --fdiv_info "] = ['jeffrey 5']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_5_jeffrey/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=40, line_per_file=3)
+    sweep[" --fdiv_info "] = ['jeffrey 6']
+    sweep[" --info "] = ["test_v0/test_TTT/fdiv_6_jeffrey/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=1, prev_file=44, line_per_file=3)
+
+
 def all():
     sweep = {
         " --pi_lr ": [1e-3, 3e-4, 1e-4],
@@ -181,4 +234,4 @@ def all():
 
 if __name__ == "__main__":
     # c20240607()
-    c20240609()
+    c20240613()
