@@ -1,4 +1,18 @@
 BEST_AGENT = {
+    "Ant-expert-Student": {
+        "TAWAC": {
+            " --tau ": [
+                1.0
+            ],
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.01
+            ]
+        },
+    },
+
     "HalfCheetah-medexp-SGaussian": {
         "IQL": {
             " --expectile ": [

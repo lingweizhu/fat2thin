@@ -27,7 +27,7 @@ def write_to_file(cmds, prev_file=0, line_per_file=1):
     if not file.closed:
         file.close()
     print("Last script:", cmd_file_path.format(str(prev_file)), "\n")
-
+    return prev_file
 
 def generate_cmd(flag_collection, base="python run_ac_offline.py "):
     cmd = base
@@ -64,7 +64,7 @@ def write_job_scripts(sweep_params, target_agents, target_envs, target_datasets,
             for run in list(range(run_base, run_base+num_runs)):
                 kwargs[" --seed "] = run
                 cmds.append(generate_cmd(kwargs))
-    write_to_file(cmds, prev_file=prev_file, line_per_file=line_per_file)
+    return write_to_file(cmds, prev_file=prev_file, line_per_file=line_per_file)
 
 def policy_evolution_scripts(sweep_params, target_agents, target_envs, target_datasets,
                              num_runs=5, run_base=0, comb_num_base=0, prev_file=0, line_per_file=1):

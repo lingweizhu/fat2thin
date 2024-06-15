@@ -206,8 +206,8 @@ def choose_param(params_res: np.ndarray, default_sample=5):
 
     # more_runs = []
     for p in avg_res.keys():
-        if len(params_res[p]) >= default_sample:
-            aucs[p] = avg_res[p].sum()
+        # if len(params_res[p]) >= default_sample:
+        aucs[p] = avg_res[p].sum()
             # aucs[p] = avg_res[p][-1]
 
         # if params_res[p].shape[0] > 5:
@@ -217,7 +217,6 @@ def choose_param(params_res: np.ndarray, default_sample=5):
     #     # print(max(aucs, key=aucs.get), more_runs[0])
     #     return more_runs[0]
     # else:
-
     best = max(aucs, key=aucs.get)
     return best
 
@@ -227,7 +226,8 @@ def draw_curve(ax, res:dict, smooth_window:int, colors:dict, styles:dict):
         mu = np.mean(res[lb], axis=0)
         err = np.std(res[lb], axis=0) / np.sqrt(res[lb].shape[0]) * CIparam
         if lb in colors:
-            ax.plot(mu, label=formal_distribution_name[lb], color=colors[lb], linestyle=styles[lb])
+            # ax.plot(mu, label=formal_distribution_name[lb], color=colors[lb], linestyle=styles[lb])
+            ax.plot(mu, label=lb, color=colors[lb], linestyle=styles[lb])
             ax.fill_between(np.arange(len(mu)), mu + err, y2=mu - err, alpha=0.3, color=colors[lb])
         else:
             ax.plot(mu, label=lb)
@@ -293,9 +293,37 @@ def c240604():
             axs[id_][ie].set_title("{}-{}".format(e, d))
     plt.show()
 
+def c240615():
+    pths = {
+        "TTT-0.5-0.0": "../data/output/test_v0/test_TTT/q_0.5_0.0/fdiv_{}_{}/Ant/expert/TTT/Student/",
+        "TTT-0.0-0.0": "../data/output/test_v0/test_TTT/q_0.0_0.0/fdiv_{}_{}/Ant/expert/TTT/Student/",
+    }
+    colors = {
+        "TTT-0.5-0.0": "C0",
+        "TTT-0.0-0.0": "C1",
+    }
+    styles = {
+        "TTT-0.5-0.0": "-",
+        "TTT-0.0-0.0": "-",
+    }
+    envs = ["Ant"]
+    datasets = ["expert"]
+    distance = ['gan', 'js', 'jeffrey']
+    terms = [3,4,5,6]
+    fig, axs = plt.subplots(len(terms), len(distance), figsize=(5*len(distance), 4*len(terms)))
+    for i, t in enumerate(terms):
+        for j, d in enumerate(distance):
+            if not (t==6 and d=='jeffrey'):
+                ed_pth = fill_in_path(pths, [t, d])
+                learning_curve(axs[i][j], ed_pth, 10, colors, styles)
+                # learning_curve_sweep(axs[i][j], ed_pth, smoothing=10)
+                axs[i][j].set_title("{} {}".format(d, t))
+    plt.tight_layout()
+    plt.show()
+
 
 if __name__ == "__main__":
     # extract_best_param()
     # find_suboptimal_setting()
     # check_param_consistancy()
-    c240604()
+    c240615()
