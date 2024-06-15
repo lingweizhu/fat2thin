@@ -22,16 +22,20 @@ class TsallisAwacTklLoss(base.ActorCritic):
         self.beh_pi_optimizer = torch.optim.Adam(list(self.beh_pi.parameters()), cfg.pi_lr)
         self.log_clip = False
 
-        self.entropic_index = 0.5
-        self.loss_entropic_index = 0
-        # self.entropic_index = 0
-        # self.loss_entropic_index = 0.5
+        self.entropic_index = 0.0
+        self.loss_entropic_index = 0.0
+        # self.entropic_index = 0.5
+        # self.loss_entropic_index = 0
         if self.loss_entropic_index == 0.:
             self.clamp_ratio = self.clamp_ratio_0
         elif self.loss_entropic_index == 0.5:
             self.clamp_ratio = self.clamp_ratio_1_2
         elif self.loss_entropic_index == 2./3.:
             self.clamp_ratio = self.clamp_ratio_2_3
+        elif self.loss_entropic_index == 2.:
+            self.clamp_ratio = self.clamp_ratio_2_1
+        elif self.loss_entropic_index == 3.:
+            self.clamp_ratio = self.clamp_ratio_3_1
         else:
             raise NotImplementedError
 
@@ -39,17 +43,20 @@ class TsallisAwacTklLoss(base.ActorCritic):
         return torch.clamp(ratio, min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.
 
     def clamp_ratio_1_2(self, ratio):
-        ret = 2.0 * (torch.clamp(torch.sqrt(ratio), min=1-self.ratio_threshold, max=1+self.ratio_threshold)
-                      - 1.)
+        ret = 2.0 * (torch.clamp(torch.sqrt(ratio), min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.)
         return ret
 
     def clamp_ratio_2_3(self, ratio):
-        return 3.0 * (torch.clamp(ratio**(1/3), min=1-self.ratio_threshold, max=1+self.ratio_threshold)
-                      - 1.)
+        return 3.0 * (torch.clamp(ratio**(1/3), min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.)
 
     def clamp_ratio_3_4(self, ratio):
-        return 4.0 * (torch.clamp(ratio**(1/4), min=1-self.ratio_threshold, max=1+self.ratio_threshold)
-                      - 1.)
+        return 4.0 * (torch.clamp(ratio**(1/4), min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.)
+
+    def clamp_ratio_2_1(self, ratio):
+        return -1. * (torch.clamp(ratio**(-1), min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.)
+
+    def clamp_ratio_3_1(self, ratio):
+        return (torch.clamp(ratio**(-2), min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.) / (-2)
 
 
     def update_beh_pi(self, data):
