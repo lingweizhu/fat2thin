@@ -72,7 +72,7 @@ def c240615():
 def c240615():
     def plot():
         fig, axs = plt.subplots(len(envs), len(datasets),
-                                figsize=(4 * len(distance), 3 * len(envs)))
+                                figsize=(4 * len(datasets), 3 * len(envs)))
         axs = axs.reshape((len(envs), len(datasets)))
         for i, e in enumerate(envs):
             for j, d in enumerate(datasets):
@@ -85,10 +85,10 @@ def c240615():
         return axs
 
     colors = {
-        "TTT-0.0-0.0": "C0",
+        "TTT": "C0",
     }
     styles = {
-        "TTT-0.0-0.0": "-",
+        "TTT": "-",
     }
     envs = ["HalfCheetah"]
     datasets = ["medexp", "medrep"]
@@ -122,8 +122,34 @@ def c240615():
     axs = plot()
     plt.savefig("img/terms6.png", dpi=300)
 
+def c240615_1():
+    colors = {
+    }
+    styles = {
+    }
+    envs = ["Hopper"]
+    datasets = ["medexp"]
+
+    pths = {
+        "sample from actor": "../data/output/test_v0/test_FTT/proposal_HTqG_actor_qG_actorloss_CopyMu-Pi/{}/{}/FTT/qGaussian/",
+        "sample from proposal": "../data/output/test_v0/test_FTT/proposal_HTqG_actor_qG_actorloss_CopyMu-Proposal/{}/{}/FTT/qGaussian/",
+    }
+    fig, axs = plt.subplots(len(envs), len(datasets),
+                            figsize=(4 * len(datasets), 3 * len(envs)))
+    axs = [[axs]]
+    for i, e in enumerate(envs):
+        for j, d in enumerate(datasets):
+            ed_pth = fill_in_path(pths, [e, d])
+            learning_curve(axs[i][j], ed_pth, 10, colors, styles)
+            axs[i][j].set_title("{} {}".format(e, d))
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("img/ftt.png", dpi=300)
+
+
 if __name__ == "__main__":
     # extract_best_param()
     # find_suboptimal_setting()
     # check_param_consistancy()
-    c240615()
+    # c240615()
+    c240615_1()
