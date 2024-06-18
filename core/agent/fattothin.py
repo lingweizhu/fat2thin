@@ -28,12 +28,12 @@ class FatToThin(base.ActorCritic):
             self.calculate_actor_loss = self.actor_maxlikelihood
         elif self.cfg.actor_loss == "CopyMu-Pi":
             self.calculate_actor_loss = self.actor_copy_pi
-        elif self.cfg.actor_loss == "CopyMu-Proposal":
-            self.calculate_actor_loss = self.actor_copy_proposal
+        # elif self.cfg.actor_loss == "CopyMu-Proposal":
+        #     self.calculate_actor_loss = self.actor_copy_proposal
         elif self.cfg.actor_loss == "KL":
             self.calculate_actor_loss = self.actor_kl
-        elif self.cfg.actor_loss == "MSE":
-            self.calculate_actor_loss = self.actor_mse
+        # elif self.cfg.actor_loss == "MSE":
+        #     self.calculate_actor_loss = self.actor_mse
         elif self.cfg.actor_loss == "GAC":
             self.calculate_actor_loss = self.actor_gac
         elif self.cfg.actor_loss == "SPOT":
