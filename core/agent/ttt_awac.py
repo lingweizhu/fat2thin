@@ -39,6 +39,15 @@ class TsallisAwacTklLoss(base.ActorCritic):
         else:
             raise NotImplementedError
 
+        if self.entropic_index == self.loss_entropic_index:
+            self.get_baseline = self.get_baseline_max
+            self.fdiv = self.fdiv_equal_idx
+        else:
+            self.get_baseline = self.get_baseline_default
+            raise NotImplementedError
+            # change return to loss
+            self.fdiv = self.fdiv_default
+
     def clamp_ratio_0(self, ratio):
         return torch.clamp(ratio, min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.
 
@@ -135,20 +144,21 @@ class TsallisAwacTklLoss(base.ActorCritic):
         best_actions = torch.reshape(best_actions, (-1, self.action_dim))
         return stacked_s_batch_full, stacked_s_batch, best_actions
 
-    def update_actor(self, data):
-        state_batch, old_action_batch, reward_batch, next_state_batch, mask_batch = \
-            (data['obs'], data['act'], data['reward'], data['obs2'], 1 - data['done'])
+    def get_baseline_max(self, best_q_values):
+        return best_q_values.max()
 
-        best_q_values, _, _ = self.get_q_value(state_batch, old_action_batch, with_grad=False)
+    def get_baseline_default(self, best_q_values):
         """
         when q values negative, always choose q > 1
         q - q.max, choose q > 1
         q - q.min, choose q < 1
         when q - q.mean, both
         """
+
         baseline_dim = 1 if best_q_values.shape[1] > 1 else 0
         if self.entropic_index >= 1:
-            baseline = best_q_values.max(dim=1, keepdim=True)[0]
+            # baseline = best_q_values.max(dim=1, keepdim=True)[0]
+            baseline = best_q_values.max()[0]
         # elif self.entropic_index < 1:
         else:
             """
@@ -156,7 +166,14 @@ class TsallisAwacTklLoss(base.ActorCritic):
             """
             baseline = best_q_values.mean(dim=baseline_dim, keepdim=True)[0]
             # baseline = best_q_values.min(dim=baseline_dim, keepdim=True)[0]
+        return baseline
 
+    def update_actor(self, data):
+        state_batch, old_action_batch, reward_batch, next_state_batch, mask_batch = \
+            (data['obs'], data['act'], data['reward'], data['obs2'], 1 - data['done'])
+
+        best_q_values, _, _ = self.get_q_value(state_batch, old_action_batch, with_grad=False)
+        baseline = self.get_baseline(best_q_values)
         """
         Tsallis KL as loss function
         TKL(a|b) = E_a [-ln_q b/a] 
@@ -165,12 +182,17 @@ class TsallisAwacTklLoss(base.ActorCritic):
         with torch.no_grad():
             log_base_policy = self.beh_pi.log_prob(state_batch, old_action_batch)
         policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
-        # if not self.log_clip:
-        #     policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
-        fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=self.fdiv_term)
 
-        exp_q_scale = self._exp_q((best_q_values - baseline) / self.alpha, q=self.entropic_index)
-        policy_loss = -torch.mean(exp_q_scale * fdiv)
+        # # if not self.log_clip:
+        # #     policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+        # fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=self.fdiv_term)
+        # exp_q_scale = self._exp_q((best_q_values - baseline) / self.alpha, q=self.entropic_index)
+        # policy_loss = -torch.mean(exp_q_scale * fdiv)
+
+        advantage = (best_q_values - baseline) / self.alpha
+        policy_loss = self.fdiv(policy_ratio, advantage, self.fdiv_name, num_terms=self.fdiv_term)
+
+
         # print(torch.where(torch.isnan(best_q_values)))
         # print(torch.where(torch.isnan(fdiv)))
         # print("actor", policy_ratio.mean(), fdiv.mean(), best_q_values.mean(), policy_loss)
@@ -190,8 +212,63 @@ class TsallisAwacTklLoss(base.ActorCritic):
                             (1 - q) / (1 - self.loss_entropic_index)) - 1) / (1 - q)
         return ret
 
+    def fdiv_equal_idx(self, ratio, advantage, fname, num_terms=5):
+        """
+        assume the advantage is (best_q_values - baseline) / self.alpha
+        we compute exp_q (advantage) and ln_q ratio in the infinite series
+        by computing them each as a vector and then do vector multiplication
+        """
+        assert self.entropic_index == self.loss_entropic_index, "you can only call this fdiv when entropic_index = loss_entropic_index!"
 
-    def fdiv(self, ratio, fname, num_terms=5):
+        if num_terms < 2:
+            return - torch.mean(
+                self._exp_q(advantage, q=self.entropic_index) * self.clamp_ratio(ratio))
+
+        expq_adv_array = torch.cat(
+            [self._exp_q(advantage, q=q)[None, :] for q in range(2, num_terms + 1)], dim=0)
+
+        if fname == "forwardkl":
+            lnq_ratio_array = torch.cat(
+                [(-1) ** q / q * self._logq_change_base(ratio, q)[None, :] for q in range(2, num_terms + 1)], dim=0)
+
+        elif fname == "backwardkl":
+            lnq_ratio_array = torch.cat(
+                [(-1) ** q * (q - 1) / q * self._logq_change_base(ratio, q)[None, :] for q in
+                 range(2, num_terms + 1)], dim=0)
+
+        elif fname == "jeffrey":
+            lnq_ratio_array = torch.cat(
+                [(-1) ** q * self._logq_change_base(ratio, q)[None, :] for q in range(2, num_terms + 1)], dim=0)
+
+        elif fname == "jensen_shannon":
+            lnq_ratio_array = torch.cat(
+                [(-1) ** q * (1 - 0.5 ** (q - 2)) / q * self._logq_change_base(ratio, q)[None, :] for q in
+                 range(2, num_terms + 1)], dim=0)
+
+        elif fname == "gan":
+            lnq_ratio_array = torch.cat(
+                [(-1) ** q * (1 - 0.5 ** (q - 1)) / q * self._logq_change_base(ratio, q)[None, :] for q in
+                 range(2, num_terms + 1)], dim=0)
+
+            # print(advantage.size(), self._exp_q(advantage, q=2).size(), ratio.size(), self.clamp_ratio(ratio).size())
+            # print(expq_adv_array[0].size())
+            # print(expq_adv_array.size())
+            # print(self._logq_change_base(ratio, 2).size())
+            # print(lnq_ratio_array.size())
+            # exit()
+
+        else:
+            raise NotImplementedError
+
+        # series = - torch.matmul(expq_adv_array, lnq_ratio_array)
+        # print((expq_adv_array * lnq_ratio_array)[:, 0, :])
+        # print(torch.sum(expq_adv_array * lnq_ratio_array, dim=0)[0, :])
+        print((expq_adv_array * lnq_ratio_array).size())
+        print(torch.sum(expq_adv_array * lnq_ratio_array, dim=0).size())
+        series = - torch.sum(expq_adv_array * lnq_ratio_array, dim=0).mean()
+        return series
+
+    def fdiv_default(self, ratio, placeholder, fname, num_terms=5):
 
         if num_terms < 2:
             # if self.log_clip:
