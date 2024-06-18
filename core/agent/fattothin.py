@@ -26,6 +26,10 @@ class FatToThin(base.ActorCritic):
         """
         if self.cfg.actor_loss == "MaxLikelihood":
             self.calculate_actor_loss = self.actor_maxlikelihood
+        elif self.cfg.actor_loss == "CopyMu-Pi":
+            self.calculate_actor_loss = self.actor_copy_pi
+        elif self.cfg.actor_loss == "CopyMu-Proposal":
+            self.calculate_actor_loss = self.actor_copy_proposal
         elif self.cfg.actor_loss == "KL":
             self.calculate_actor_loss = self.actor_kl
         elif self.cfg.actor_loss == "MSE":
@@ -134,6 +138,20 @@ class FatToThin(base.ActorCritic):
         # temp, tlogp = self.proposal.sample(state_batch)
         # print(temp.mean(axis=0))
         # print(logp.mean(), proposal_logprob.mean(), tlogp.mean())
+        return actor_loss
+
+    def actor_copy_pi(self, state_batch, action_batch):
+        self.ac.pi.mean_net.load_state_dict(self.proposal.mean_net.state_dict())
+        action_samples, _ = self.ac.pi.rsample(state_batch)
+        proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
+        actor_loss = -proposal_logprob.mean()
+        return actor_loss
+
+    def actor_copy_proposal(self, state_batch, action_batch):
+        self.ac.pi.mean_net.load_state_dict(self.proposal.mean_net.state_dict())
+        action_samples, _ = self.proposal.sample(state_batch)
+        logprob = self.ac.pi.log_prob(state_batch, action_samples)
+        actor_loss = -logprob.mean()
         return actor_loss
 
     def actor_mse(self, state_batch, action_batch):

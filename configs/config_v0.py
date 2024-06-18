@@ -232,7 +232,8 @@ def c20240615():
     target_datasets = ["medexp", "medrep"]
 
     terms = [2,4,6]
-    distances = ['gan', 'jeffrey', 'js']
+    # distances = ['gan', 'jeffrey', 'js']
+    distances = ['jensen_shannon']
     combs = list(itertools.product(terms, distances))
     sweep_num = 12
     num_runs=5
@@ -243,16 +244,37 @@ def c20240615():
         sweep[" --info "] = ["test_v0/test_TTT/q_0.0_0.0/fdiv_{}_{}/".format(t, d)]
         prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=num_runs, comb_num_base=0, prev_file=prev_file, line_per_file=1)
 
-    terms = [1]
-    distances = ['gan']
-    sweep[" --fdiv_info "] = ['gan 1']
-    sweep[" --info "] = ["test_v0/test_TTT/q_0.0_0.0/fdiv_1/"]
-    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets,
-                                  num_runs=num_runs, comb_num_base=0, prev_file=prev_file,
-                                  line_per_file=1)
+    # terms = [1]
+    # distances = ['gan']
+    # sweep[" --fdiv_info "] = ['gan 1']
+    # sweep[" --info "] = ["test_v0/test_TTT/q_0.0_0.0/fdiv_1/"]
+    # prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets,
+    #                               num_runs=num_runs, comb_num_base=0, prev_file=prev_file,
+    #                               line_per_file=1)
 
+def c20240617():
+    target_agents = ["FTT"]
+    target_envs = ["Hopper"]
+    target_datasets = ["medexp"]
+
+    sweep = {
+        " --pi_lr ": [1e-3, 3e-4],
+        " --tau ": [0.5],
+        " --rho ": [0.2],
+        " --q_lr_prob ": [1.],
+        " --actor_loss ": ["CopyMu-Proposal"],
+        " --proposal_distribution ": ["HTqGaussian"],
+        " --distribution ": ["qGaussian"],
+        " --info ": ["test_v0/test_FTT/proposal_HTqG_actor_qG_actorloss_CopyMu-Proposal/"],
+    }
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=0, prev_file=0, line_per_file=1)
+
+    sweep[" --actor_loss "] = ["CopyMu-Pi"]
+    sweep[" --info "] = ["test_v0/test_FTT/proposal_HTqG_actor_qG_actorloss_CopyMu-Pi/"]
+    write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=0, prev_file=6, line_per_file=1)
 
 if __name__ == "__main__":
     # c20240607()
     # c20240613()
     c20240615()
+    # c20240617()
