@@ -47,6 +47,7 @@ class TsallisAwacTklLoss(base.ActorCritic):
         #     raise NotImplementedError
         #     # change return to loss
         #     self.fdiv = self.fdiv_default
+        self.get_baseline = self.get_baseline_default
 
     def clamp_ratio_0(self, ratio):
         return torch.clamp(ratio, min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.
