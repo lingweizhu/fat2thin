@@ -25,7 +25,7 @@ class TsallisAwacTklLoss(base.ActorCritic):
         self.entropic_index = 0.0
         self.loss_entropic_index = 0.0
         # self.entropic_index = 0.5
-        # self.loss_entropic_index = 0
+        # self.loss_entropic_index = 0.5
         if self.loss_entropic_index == 0.:
             self.clamp_ratio = self.clamp_ratio_0
         elif self.loss_entropic_index == 0.5:
@@ -39,14 +39,14 @@ class TsallisAwacTklLoss(base.ActorCritic):
         else:
             raise NotImplementedError
 
-        if self.entropic_index == self.loss_entropic_index:
-            self.get_baseline = self.get_baseline_max
-            self.fdiv = self.fdiv_equal_idx
-        else:
-            self.get_baseline = self.get_baseline_default
-            raise NotImplementedError
-            # change return to loss
-            self.fdiv = self.fdiv_default
+        # if self.entropic_index == self.loss_entropic_index:
+        #     self.get_baseline = self.get_baseline_max
+        #     self.fdiv = self.fdiv_equal_idx
+        # else:
+        #     self.get_baseline = self.get_baseline_default
+        #     raise NotImplementedError
+        #     # change return to loss
+        #     self.fdiv = self.fdiv_default
 
     def clamp_ratio_0(self, ratio):
         return torch.clamp(ratio, min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.
@@ -182,15 +182,15 @@ class TsallisAwacTklLoss(base.ActorCritic):
         with torch.no_grad():
             log_base_policy = self.beh_pi.log_prob(state_batch, old_action_batch)
         policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
-
-        # # if not self.log_clip:
-        # #     policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
-        # fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=self.fdiv_term)
-        # exp_q_scale = self._exp_q((best_q_values - baseline) / self.alpha, q=self.entropic_index)
-        # policy_loss = -torch.mean(exp_q_scale * fdiv)
-
         advantage = (best_q_values - baseline) / self.alpha
-        policy_loss = self.fdiv(policy_ratio, advantage, self.fdiv_name, num_terms=self.fdiv_term)
+
+        # if not self.log_clip:
+        #     policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+        fdiv = self.fdiv_default(policy_ratio, advantage, self.fdiv_name, num_terms=self.fdiv_term)
+        exp_q_scale = self._exp_q((best_q_values - baseline) / self.alpha, q=self.entropic_index)
+        policy_loss = -torch.mean(exp_q_scale * fdiv)
+
+        # policy_loss = self.fdiv(policy_ratio, advantage, self.fdiv_name, num_terms=self.fdiv_term)
 
 
         # print(torch.where(torch.isnan(best_q_values)))
@@ -263,8 +263,6 @@ class TsallisAwacTklLoss(base.ActorCritic):
         # series = - torch.matmul(expq_adv_array, lnq_ratio_array)
         # print((expq_adv_array * lnq_ratio_array)[:, 0, :])
         # print(torch.sum(expq_adv_array * lnq_ratio_array, dim=0)[0, :])
-        print((expq_adv_array * lnq_ratio_array).size())
-        print(torch.sum(expq_adv_array * lnq_ratio_array, dim=0).size())
         series = - torch.sum(expq_adv_array * lnq_ratio_array, dim=0).mean()
         return series
 
