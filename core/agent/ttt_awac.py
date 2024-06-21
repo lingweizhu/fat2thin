@@ -41,12 +41,12 @@ class TsallisAwacTklLoss(base.ActorCritic):
 
         # if self.entropic_index == self.loss_entropic_index:
         #     self.get_baseline = self.get_baseline_max
-        #     self.fdiv = self.fdiv_equal_idx
+        #     # self.fdiv = self.fdiv_equal_idx
         # else:
         #     self.get_baseline = self.get_baseline_default
-        #     raise NotImplementedError
-        #     # change return to loss
-        #     self.fdiv = self.fdiv_default
+        #     # raise NotImplementedError
+        #     # # change return to loss
+        #     # self.fdiv = self.fdiv_default
         self.get_baseline = self.get_baseline_default
 
     def clamp_ratio_0(self, ratio):
@@ -100,20 +100,20 @@ class TsallisAwacTklLoss(base.ActorCritic):
         # policy and target network parameters
         next_action, logprobs = self.ac.pi.sample(next_state_batch)
         next_q, _, _ = self.get_q_value_target(next_state_batch, next_action)
-        # with torch.no_grad():
-        #     log_base_policy = self.beh_pi.log_prob(next_state_batch, next_action)
-        # policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
-        # # if not self.log_clip:
-        # #     policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
-        # fdiv = self.fdiv(policy_ratio, self.fdiv_name, num_terms=self.fdiv_term)
+        with torch.no_grad():
+            log_base_policy = self.beh_pi.log_prob(next_state_batch, next_action)
+        policy_ratio = logprobs.exp() / (log_base_policy.exp() + 1e-8)
+        # if not self.log_clip:
+        #     policy_ratio = torch.clamp(policy_ratio, 1 - self.ratio_threshold, 1 + self.ratio_threshold)
+        fdiv = self.fdiv_default(policy_ratio, None, self.fdiv_name, num_terms=self.fdiv_term)
 
         """
         we are minimizing distance to a TKL policy
         fdiv = TKL = -pi * ln_q mu/pi
         r - TKL = r + ln_q mu/pi
         """
-        # target_q_value = reward_batch + mask_batch * self.gamma * (next_q - self.alpha * fdiv)
-        target_q_value = reward_batch + mask_batch * self.gamma * next_q
+        target_q_value = reward_batch + mask_batch * self.gamma * (next_q - self.alpha * fdiv)
+        # target_q_value = reward_batch + mask_batch * self.gamma * next_q
         _, q1, q2 = self.get_q_value(state_batch, action_batch, with_grad=True)
         # Calculate the loss on the critic
         critic1_loss = (0.5 * (target_q_value - q1) ** 2).mean()
@@ -159,7 +159,7 @@ class TsallisAwacTklLoss(base.ActorCritic):
         baseline_dim = 1 if best_q_values.shape[1] > 1 else 0
         if self.entropic_index >= 1:
             # baseline = best_q_values.max(dim=1, keepdim=True)[0]
-            baseline = best_q_values.max()[0]
+            baseline = best_q_values.max()
         # elif self.entropic_index < 1:
         else:
             """
