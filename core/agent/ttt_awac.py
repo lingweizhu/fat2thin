@@ -24,8 +24,8 @@ class TsallisAwacTklLoss(base.ActorCritic):
 
         # self.entropic_index = 0.0
         # self.loss_entropic_index = 0.0
-        self.entropic_index = 0.5
-        self.loss_entropic_index = 0.5
+        self.entropic_index = cfg.tsallis_q
+        self.loss_entropic_index = cfg.tsallis_q2
         if self.loss_entropic_index == 0.:
             self.clamp_ratio = self.clamp_ratio_0
         elif self.loss_entropic_index == 0.5:
