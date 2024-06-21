@@ -22,10 +22,10 @@ class TsallisAwacTklLoss(base.ActorCritic):
         self.beh_pi_optimizer = torch.optim.Adam(list(self.beh_pi.parameters()), cfg.pi_lr)
         self.log_clip = False
 
-        self.entropic_index = 0.0
-        self.loss_entropic_index = 0.0
-        # self.entropic_index = 0.5
-        # self.loss_entropic_index = 0.5
+        # self.entropic_index = 0.0
+        # self.loss_entropic_index = 0.0
+        self.entropic_index = 0.5
+        self.loss_entropic_index = 0.5
         if self.loss_entropic_index == 0.:
             self.clamp_ratio = self.clamp_ratio_0
         elif self.loss_entropic_index == 0.5:
