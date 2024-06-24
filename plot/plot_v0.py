@@ -1,4 +1,4 @@
-
+import numpy as np
 from utils import *
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -206,10 +206,121 @@ def c240620():
     plt.savefig("img/v2_terms6.png", dpi=300)
 
 
+def c240622():
+    def plot():
+        fig, axs = plt.subplots(len(envs), len(datasets),
+                                figsize=(4 * len(datasets), 3 * len(envs)))
+        axs = np.asarray([axs])
+        axs = axs.reshape((len(envs), len(datasets)))
+        for i, e in enumerate(envs):
+            for j, d in enumerate(datasets):
+                ed_pth = fill_in_path(pths, [e, d])
+                learning_curve(axs[i][j], ed_pth, 10, colors, styles)
+                # learning_curve_sweep(axs[i][j], ed_pth, smoothing=10)
+                axs[i][j].set_title("{} {}".format(e, d))
+        plt.legend()
+        plt.tight_layout()
+        return axs
+
+    colors = {
+        "TTT": "C0",
+        "Gan": "C1",
+        "JS": "C2",
+        "Jeffery": "C3",
+    }
+    styles = {
+        "TTT": "-",
+        "Gan": "-",
+        "JS": "-",
+        "Jeffery": "-",
+    }
+    envs = ["HalfCheetah"]
+    datasets = ["medrep"]
+    distance = ['gan', 'jensen_shannon', 'jeffrey']
+
+    pths = {
+        "TTT": "../data/output/test_v0/test_TTT/q_0.0_0.0/fdiv_1/{}/{}/TTT/Student/",
+        "Gan": "../data/output/test_v0/test_TTT/q_1.0_0.0/fdiv_4_gan/{}/{}/TTT/Student/",
+        "JS": "../data/output/test_v0/test_TTT/q_1.0_0.0/fdiv_4_jensen_shannon/{}/{}/TTT/Student/",
+        "Jeffery": "../data/output/test_v0/test_TTT/q_1.0_0.0/fdiv_4_jeffrey/{}/{}/TTT/Student/",
+    }
+    axs = plot()
+    plt.savefig("img/q_1_0_terms4.png", dpi=300)
+
+    pths = {
+        "TTT": "../data/output/test_v0/test_TTT/q_0.0_0.0/fdiv_1/{}/{}/TTT/Student/",
+        "Gan": "../data/output/test_v0/test_TTT/q_0.5_0.5/fdiv_4_gan/{}/{}/TTT/Student/",
+        "JS": "../data/output/test_v0/test_TTT/q_0.5_0.5/fdiv_4_jensen_shannon/{}/{}/TTT/Student/",
+        "Jeffery": "../data/output/test_v0/test_TTT/q_0.5_0.5/fdiv_4_jeffrey/{}/{}/TTT/Student/",
+    }
+    axs = plot()
+    plt.savefig("img/q_0.5_0.5_terms4.png", dpi=300)
+
+def c240623():
+    def plot():
+        fig, axs = plt.subplots(len(envs), len(datasets),
+                                figsize=(4 * len(datasets), 3 * len(envs)))
+        axs = np.asarray([axs])
+        axs = axs.reshape((len(envs), len(datasets)))
+        for i, e in enumerate(envs):
+            for j, d in enumerate(datasets):
+                ed_pth = fill_in_path(pths, [e, d])
+                learning_curve(axs[i][j], ed_pth, 10, colors, styles)
+                # learning_curve_sweep(axs[i][j], ed_pth, smoothing=10)
+                axs[i][j].set_title("{} {}".format(e, d))
+        plt.legend()
+        plt.tight_layout()
+        return axs
+
+    colors = {
+        "TTT": "C0",
+        "Gan": "C1",
+        "JS": "C2",
+        "Jeffery": "C3",
+    }
+    styles = {
+        "TTT": "-",
+        "Gan": "-",
+        "JS": "-",
+        "Jeffery": "-",
+    }
+    envs = ["HalfCheetah"]
+    datasets = ["medrep"]
+    distance = ['gan', 'jensen_shannon', 'jeffrey']
+
+    pths = {
+        "TTT": "../data/output/test_v0/test_TTT/q_0.0_0.0/fdiv_1/{}/{}/TTT/Student/",
+        "Gan": "../data/output/test_v0/test_TTT_v3/q_0.0_0.0/fdiv_3_gan/{}/{}/TTT/Student/",
+        "JS": "../data/output/test_v0/test_TTT_v3/q_0.0_0.0/fdiv_3_jensen_shannon/{}/{}/TTT/Student/",
+        "Jeffery": "../data/output/test_v0/test_TTT_v3/q_0.0_0.0/fdiv_3_jeffrey/{}/{}/TTT/Student/",
+    }
+    axs = plot()
+    plt.savefig("img/v3_terms3.png", dpi=300)
+
+    pths = {
+        "TTT": "../data/output/test_v0/test_TTT/q_0.0_0.0/fdiv_1/{}/{}/TTT/Student/",
+        "Gan": "../data/output/test_v0/test_TTT_v3/q_0.0_0.0/fdiv_4_gan/{}/{}/TTT/Student/",
+        "JS": "../data/output/test_v0/test_TTT_v3/q_0.0_0.0/fdiv_4_jensen_shannon/{}/{}/TTT/Student/",
+        "Jeffery": "../data/output/test_v0/test_TTT_v3/q_0.0_0.0/fdiv_4_jeffrey/{}/{}/TTT/Student/",
+    }
+    axs = plot()
+    plt.savefig("img/v3_terms4.png", dpi=300)
+
+    pths = {
+        "TTT": "../data/output/test_v0/test_TTT/q_0.0_0.0/fdiv_1/{}/{}/TTT/Student/",
+        "Gan": "../data/output/test_v0/test_TTT_v3/q_0.0_0.0/fdiv_5_gan/{}/{}/TTT/Student/",
+        "JS": "../data/output/test_v0/test_TTT_v3/q_0.0_0.0/fdiv_5_jensen_shannon/{}/{}/TTT/Student/",
+        "Jeffery": "../data/output/test_v0/test_TTT_v3/q_0.0_0.0/fdiv_5_jeffrey/{}/{}/TTT/Student/",
+    }
+    axs = plot()
+    plt.savefig("img/v3_terms5.png", dpi=300)
+
+
 if __name__ == "__main__":
     # extract_best_param()
     # find_suboptimal_setting()
     # check_param_consistancy()
     # c240615()
     # c240615_1()
-    c240620()
+    # c240622()
+    c240623()
