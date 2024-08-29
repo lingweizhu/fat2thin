@@ -102,6 +102,129 @@ def c20240617():
     sweep[" --info "] = ["test_v0/test_FTT/proposal_HTqG_actor_qG_actorloss_CopyMu-Pi/"]
     write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=3, comb_num_base=0, prev_file=6, line_per_file=1)
 
+def c20240710():
+    target_agents = ["FTT"]
+    target_envs = ["HalfCheetah", "Hopper", "Walker2d"]
+    target_datasets = ["medexp", "medium", "medrep"]
+
+    sweep = {
+        " --pi_lr ": [1e-3, 3e-4],
+        " --tau ": [1.0, 0.5, 0.01],
+        " --rho ": [0.2],
+        " --q_lr_prob ": [1.],
+        " --actor_loss ": ["CopyMu-Pi"],
+        " --proposal_distribution ": ["HTqGaussian"],
+        " --distribution ": ["qGaussian"],
+        " --info ": ["test_v0/test_FTT/proposal_HTqG_actor_qG_actorloss_CopyMu-Pi/"],
+    }
+    prev_file = 0
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+def c20240725():
+    target_agents = ["FTT"]
+    target_envs = ["HalfCheetah", "Hopper", "Walker2d"]
+    target_datasets = ["medexp", "medium", "medrep"]
+    prev_file = 0
+
+    sweep = {
+        " --pi_lr ": [1e-3, 3e-4],
+        " --tau ": [1.0, 0.5, 0.01],
+        " --rho ": [0.2],
+        " --q_lr_prob ": [1.],
+        " --actor_loss ": ["SPOT"],
+        " --proposal_distribution ": ["HTqGaussian"],
+        " --distribution ": ["qGaussian"],
+        " --info ": ["test_v0/test_FTT/proposal_HTqG_actor_qG_actorloss_SPOT/"],
+    }
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+    sweep[" --actor_loss "] = ["KL"]
+    sweep[" --info "] = ["test_v0/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/"]
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+def c20240821():
+    target_agents = ["FTT"]
+    target_envs = ["SimEnv3"]
+    target_datasets = ["random"]
+    prev_file = 0
+
+    sweep = {
+        " --pi_lr ": [3e-4, 1e-4, 3e-5],
+        " --tau ": [1.0, 0.5, 0.1, 0.01],
+        " --rho ": [0.2],
+        " --q_lr_prob ": [1.],
+        " --gamma ": [0.9],
+        " --timeout ": [24],
+        " --actor_loss ": ["KL"],
+        " --log_interval ": [10000],
+        " --max_steps ": [500000],
+        " --proposal_distribution ": ["HTqGaussian"],
+        " --distribution ": ["qGaussian"],
+        " --info ": ["test_v0/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/"],
+    }
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+    target_agents = ["TAWAC"]
+    sweep[" --distribution "] = ["HTqGaussian", "SGaussian"]
+    sweep[" --info "] = ["test_v0/baseline/"]
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+    target_agents = ["IQL"]
+    sweep[" --expectile "] = [0.7, 0.9]
+    sweep[" --tau "] = [0.1, 1./3.]
+    sweep[" --distribution "] = ["HTqGaussian", "SGaussian"]
+    sweep[" --info "] = ["test_v0/baseline/"]
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+def c20240829():
+    target_envs = ["SimEnv3"]
+    target_datasets = ["random"]
+    prev_file = 0
+
+    sweep = {
+        " --rho ": [0.2],
+        " --q_lr_prob ": [1.],
+        " --gamma ": [0.9],
+        " --timeout ": [24],
+        " --actor_loss ": ["KL"],
+        " --log_interval ": [10000],
+        " --max_steps ": [500000],
+        " --proposal_distribution ": ["HTqGaussian"],
+        " --distribution ": ["qGaussian"],
+    }
+    sweep[" --info "] = ["policy_evolution/"]
+
+    target_agents = ["FTT"]
+    sweep[" --pi_lr "] = [0.0003]
+    sweep[" --tau "] = [0.1]
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+    target_agents = ["IQL"]
+    sweep[" --pi_lr "] = [3e-05]
+    sweep[" --expectile "] = [0.9]
+    sweep[" --tau "] = [1./3.]
+    sweep[" --distribution "] = ["SGaussian"]
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+    target_agents = ["TAWAC"]
+    sweep[" --pi_lr "] = [3e-05]
+    sweep[" --tau "] = [0.5]
+    sweep[" --distribution "] = ["SGaussian"]
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+    target_agents = ["IQL"]
+    sweep[" --pi_lr "] = [0.0003]
+    sweep[" --expectile "] = [0.7]
+    sweep[" --tau "] = [0.1]
+    sweep[" --distribution "] = ["HTqGaussian"]
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+    target_agents = ["TAWAC"]
+    sweep[" --pi_lr "] = [0.0003]
+    sweep[" --tau "] = [0.01]
+    sweep[" --distribution "] = ["HTqGaussian"]
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+
 if __name__ == "__main__":
-    # c20240607()
-    c20240617()
+    c20240829()

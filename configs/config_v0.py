@@ -298,9 +298,25 @@ def c20240615():
         sweep[" --info "] = ["test_v0/test_TTT/q_0.0_0.0/fdiv_{}_{}/".format(t, d)]
         prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=num_runs, comb_num_base=0, prev_file=prev_file, line_per_file=1)
 
+def c20240820():
+    target_agents = ["TAWACqG", "TAWACqGC"]
+    target_envs = ["HalfCheetah"]
+    target_datasets = ["medexp", "medium"]
+    prev_file = 0
+
+    sweep = {
+        " --pi_lr ": [1e-3, 3e-4],
+        " --tau ": [1.0, 0.5, 0.01],
+        " --rho ": [0.2],
+        " --q_lr_prob ": [1.],
+        " --distribution ": ["qGaussian"],
+        " --info ": ["test_v0/naive_projection_baselines/"],
+    }
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=5, comb_num_base=0, prev_file=prev_file, line_per_file=1)
 
 if __name__ == "__main__":
     # c20240607()
     # c20240613()
-    c20240615()
+    # c20240615()
     # c20240617()
+    c20240820()

@@ -305,11 +305,115 @@ def c20240624():
         sweep[" --info "] = ["test_v0/temp/q_0.0_0.0/fdiv_{}_{}/".format(t, d)]
         prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=num_runs, comb_num_base=0, prev_file=prev_file, line_per_file=1)
 
+def c20240625():
+    sweep = {
+        " --pi_lr ": [1e-3, 3e-4, 1e-4],
+        " --q_lr_prob ": [3., 1., 1./3.],
+        " --tau ": [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0],
+        " --distribution ": ["Student"],
+    }
+    target_agents = ["TTT"]
+    target_envs = ["HalfCheetah"]
+    target_datasets = ["medrep"]
+
+    terms = [4]
+    distances = ['gan', 'jeffrey']
+    combs = list(itertools.product(terms, distances))
+    num_runs=5
+    prev_file=0
+
+    for td in combs:
+        t, d = td
+        sweep[" --tsallis_q "] = [0.0]
+        sweep[" --tsallis_q2 "] = [0.0]
+        sweep[" --fdiv_info "] = ['{} {}'.format(d, t)]
+        sweep[" --info "] = ["test_v0/test_TTT/q_0.0_0.0/fdiv_{}_{}/".format(t, d)]
+        prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=num_runs, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+def c20240701():
+    sweep = {
+        " --pi_lr ": [1e-4],
+        " --q_lr_prob ": [1.],
+        " --tau ": [1.0],
+        " --distribution ": ["Student"],
+    }
+    target_agents = ["TTT"]
+    target_envs = ["HalfCheetah"]
+    target_datasets = ["medrep"]
+
+    terms = [4]
+    distances = ['gan', 'jeffrey', 'jensen_shannon']
+    combs = list(itertools.product(terms, distances))
+    num_runs=5
+    prev_file=0
+
+    q2_list = ['0.1', '0.2', '0.3', '0.4', '0.6', '0.7', '0.8', '0.9',
+               '-0.1', '-0.2', '-0.3', '-0.4', '-0.5', '-0.6', '-0.7', '-0.8', '-0.9']
+    for td in combs:
+        t, d = td
+        for q2 in q2_list:
+            sweep[" --tsallis_q "] = [float(q2)]
+            sweep[" --tsallis_q2 "] = [0.0]
+            sweep[" --fdiv_info "] = ['{} {}'.format(d, t)]
+            sweep[" --info "] = ["test_v0/test_TTT/q_{}_0.0/fdiv_{}_{}/".format(q2, t, d)]
+            prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=num_runs, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+def c20240710():
+    sweep = {
+        " --pi_lr ": [1e-4],
+        " --q_lr_prob ": [1.],
+        " --tau ": [1.0],
+        " --distribution ": ["HTqGaussian"],
+    }
+    target_agents = ["TTT"]
+    target_envs = ["HalfCheetah"]
+    target_datasets = ["medrep"]
+
+    terms = [4]
+    distances = ['gan', 'jeffrey', 'jensen_shannon']
+    combs = list(itertools.product(terms, distances))
+    num_runs=5
+    prev_file=0
+
+    q2_list = ['0.0', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9',
+               '-0.1', '-0.2', '-0.3', '-0.4', '-0.5', '-0.6', '-0.7', '-0.8', '-0.9']
+    for td in combs:
+        t, d = td
+        for q2 in q2_list:
+            sweep[" --tsallis_q "] = [0.0]
+            sweep[" --tsallis_q2 "] = [float(q2)]
+            sweep[" --fdiv_info "] = ['{} {}'.format(d, t)]
+            sweep[" --info "] = ["test_v0/test_TTT/q_0.0_{}/fdiv_{}_{}/".format(q2, t, d)]
+            prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=num_runs, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+
+def c20240718():
+    sweep = {
+        " --pi_lr ": [1e-4],
+        " --q_lr_prob ": [1.],
+        " --tau ": [1.0],
+        " --distribution ": ["HTqGaussian"],
+        " --zeta ": [0.1, 0.5, 0.75, 1.0]
+    }
+    target_agents = ["TTT"]
+    target_envs = ["HalfCheetah"]
+    target_datasets = ["medrep"]
+
+    terms = [4]
+    distances = ['gan', 'jeffrey', 'jensen_shannon']
+    combs = list(itertools.product(terms, distances))
+    num_runs=5
+    prev_file=0
+
+    q2_list = ['0.0', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9',
+               '-0.1', '-0.2', '-0.3', '-0.4', '-0.5', '-0.6', '-0.7', '-0.8', '-0.9']
+    for td in combs:
+        t, d = td
+        for q2 in q2_list:
+            sweep[" --tsallis_q "] = [0.0]
+            sweep[" --tsallis_q2 "] = [float(q2)]
+            sweep[" --fdiv_info "] = ['{} {}'.format(d, t)]
+            sweep[" --info "] = ["test_v0/test_TTT/q_0.0_{}/fdiv_{}_{}/".format(q2, t, d)]
+            prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets, num_runs=num_runs, comb_num_base=6, prev_file=prev_file, line_per_file=1)
 
 if __name__ == "__main__":
-    # c20240607()
-    # c20240613()
-    # c20240615()
-    # c20240618()
-    # c20240621()
-    c20240624()
+    c20240718()

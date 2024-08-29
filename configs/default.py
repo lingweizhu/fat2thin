@@ -27,6 +27,13 @@ DEFAULT_ENV = {
         " --action_min ": -1,
         " --action_max ": 1,
     },
+    "SimEnv3": {
+        " --discrete_control ": 0,
+        " --state_dim ": 8,
+        " --action_dim ": 1,
+        " --action_min ": -1,
+        " --action_max ": 1,
+    }
 }
 
 DEFAULT_AGENT = {
