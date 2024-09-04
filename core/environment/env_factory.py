@@ -7,6 +7,7 @@ from core.environment.halfcheetah import HalfCheetah
 from core.environment.walker2d import Walker2d
 from core.environment.hopper import Hopper
 from core.environment.ant import Ant
+from core.environment.simulations import SimEnv3
 
 class EnvFactory:
     @classmethod
@@ -25,6 +26,8 @@ class EnvFactory:
             return lambda: Hopper(cfg.seed)
         elif cfg.env_name == 'Ant':
             return lambda: Ant(cfg.seed)
+        elif cfg.env_name == 'SimEnv3':
+            return lambda: SimEnv3(cfg.seed)
         else:
             print(cfg.env_name)
             raise NotImplementedError
