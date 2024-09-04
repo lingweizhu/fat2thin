@@ -7,6 +7,7 @@ from torch.distributions import Categorical
 
 from core.network import network_utils, network_bodies
 from core.utils import torch_utils
+from core.network.network_architectures import FCNetwork
 
 
 class SquashedGaussian(nn.Module):
@@ -17,6 +18,8 @@ class SquashedGaussian(nn.Module):
             self.base_network = network_bodies.FCBody(device, observation_dim, hidden_units=tuple(arch), init_type='xavier')
             self.mean_head = network_utils.layer_init_xavier(nn.Linear(arch[-1], action_dim))
             self.logstd_head = network_utils.layer_init_xavier(nn.Linear(arch[-1], action_dim))
+            # self.mean_net = FCNetwork(device, observation_dim, tuple(arch), action_dim)
+            # self.log_shape_net = FCNetwork(device, observation_dim, tuple(arch), action_dim)
         else:
             raise NotImplementedError
         self.to(device)
@@ -26,6 +29,8 @@ class SquashedGaussian(nn.Module):
         base = self.base_network(observation)
         mean = self.mean_head(base)
         log_std = torch.clamp(self.logstd_head(base), min=-20, max=2)
+        # mean = self.mean_net(observation)
+        # log_std = torch.clamp(self.log_shape_net(observation), min=-20, max=2)
         std = log_std.exp()
 
         normal = torch.distributions.Normal(mean, std)
@@ -65,6 +70,8 @@ class SquashedGaussian(nn.Module):
             base = self.base_network(x)
             mean = self.mean_head(base)
             log_std = torch.clamp(self.logstd_head(base), min=-20, max=2)
+            # mean = self.mean_net(x)
+            # log_std = torch.clamp(self.log_shape_net(x), min=-20, max=2)
             std = log_std.exp()
         if dim == -1:
             normal = torch.distributions.Normal(mean, std)

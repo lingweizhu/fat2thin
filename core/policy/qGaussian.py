@@ -25,6 +25,7 @@ from torch.distributions import Beta
 from torch.distributions.distribution import Distribution
 from torch.distributions.utils import lazy_property
 from core.network.network_architectures import FCNetwork
+from core.network import network_utils, network_bodies
 
 
 LOG_2 = np.log(2)
@@ -406,8 +407,12 @@ class qMultivariateGaussian(nn.Module):
 
         self.num_actions = num_actions
 
-        self.mean_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([mean]*num_actions), requires_grad=True)
-        self.log_shape_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([shape]*num_actions), requires_grad=True)
+        # self.mean_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([mean]*num_actions), requires_grad=True)
+        # self.log_shape_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([shape]*num_actions), requires_grad=True)
+        self.base_network = network_bodies.FCBody(device, state_dim, hidden_units=tuple(hidden_units),
+                                                  init_type='xavier')
+        self.mean_head = network_utils.layer_init_xavier(nn.Linear(hidden_units[-1], num_actions))
+        self.logstd_head = network_utils.layer_init_xavier(nn.Linear(hidden_units[-1], num_actions))
 
         # self.mvbg = MultivariateBetaGaussianDiag(self.mean, self.shape ** 2, alpha=self.entropic_index)
         self.log_upper_bound = np.log(action_max - 1e-6)
@@ -417,13 +422,13 @@ class qMultivariateGaussian(nn.Module):
         self.action_min = torch.FloatTensor(action_min)
 
     def forward(self, x):
-
-        # mean = torch.clamp(self.mean, min=self.action_min, max=self.action_max)
-        # shape = torch.clamp(self.shape, min=1e-6)
-        mean = torch.tanh(self.mean_net(x))
+        base = self.base_network(x)
+        mean = torch.tanh(self.mean_head(base))
+        # mean = torch.tanh(self.mean_net(x))
         mean = torch.clamp(mean, -1. + 1e-6, 1. - 1e-6)
         mean = ((mean + 1) / 2) * (self.action_max - self.action_min) + self.action_min  # ∈ [action_min, action_max]
-        shape = torch.exp(torch.clamp(self.log_shape_net(x), -14., self.log_upper_bound))
+        shape = torch.exp(torch.clamp(self.logstd_head(base), -14., self.log_upper_bound))
+        # shape = torch.exp(torch.clamp(self.log_shape_net(x), -14., self.log_upper_bound))
         return mean, shape
     
     def rsample(self, x, num_samples=1):
@@ -476,6 +481,20 @@ class qMultivariateGaussian(nn.Module):
         self.action_max = self.action_max.to(device)
         self.action_min = self.action_min.to(device)
         return super(qMultivariateGaussian, self).to(device)
+
+    def distribution(self, x, dim=-1):
+        if dim == -1:
+            with torch.no_grad():
+                mean, shape = self.forward(x)
+                dist = MultivariateBetaGaussianDiag(mean, shape, alpha=self.entropic_index)
+            return dist, mean, shape, None
+        else:
+            with torch.no_grad():
+                mean, shape = self.forward(x)
+                mean = mean[:, dim: dim+1]
+                shape = shape[:, dim: dim+1]
+                dist = MultivariateBetaGaussianDiag(mean, shape, alpha=self.entropic_index)
+            return dist, mean, shape, None
 
 
 """
@@ -613,8 +632,12 @@ class qHeavyTailedGaussian(nn.Module):
         # self.mean_net = nn.Linear(hidden_dim, num_actions)
         # self.log_shape_net = nn.Linear(hidden_dim, num_actions)
 
-        self.mean_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([mean]*num_actions), requires_grad=True)
-        self.log_shape_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([shape]*num_actions), requires_grad=True)
+        self.base_network = network_bodies.FCBody(device, state_dim, hidden_units=tuple(hidden_units),
+                                                  init_type='xavier')
+        self.mean_head = network_utils.layer_init_xavier(nn.Linear(hidden_units[-1], num_actions))
+        self.logstd_head = network_utils.layer_init_xavier(nn.Linear(hidden_units[-1], num_actions))
+        # self.mean_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([mean]*num_actions), requires_grad=True)
+        # self.log_shape_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([shape]*num_actions), requires_grad=True)
 
         action_max = np.ones(num_actions) * (action_max - 1e-6)
         action_min = np.ones(num_actions) * (action_min + 1e-6)
@@ -636,16 +659,15 @@ class qHeavyTailedGaussian(nn.Module):
         self.to(device)
 
     def forward(self, state):
-        # x = self.act(self.linear1(state))
-        # x = self.act(self.linear2(x))
-        # mean = torch.tanh(self.mean_net(x))
-        mean = torch.tanh(self.mean_net(state))
+        base = self.base_network(state)
+        mean = torch.tanh(self.mean_head(base))
+        # mean = torch.tanh(self.mean_net(state))
         mean = ((mean + 1) / 2) * (
                     self.action_max - self.action_min) + self.action_min  # ∈ [action_min, action_max]
-        # shape = torch.exp(
-        #     torch.clamp(self.log_shape_net(x), self.log_lower_bound, self.log_upper_bound))
         shape = torch.exp(
-            torch.clamp(self.log_shape_net(state), self.log_lower_bound, self.log_upper_bound))
+            torch.clamp(self.logstd_head(base), self.log_lower_bound, self.log_upper_bound))
+        # shape = torch.exp(
+        #     torch.clamp(self.log_shape_net(state), self.log_lower_bound, self.log_upper_bound))
 
         return mean, shape
 

@@ -5,7 +5,7 @@ import core.environment.env_factory as environment
 from core.utils import torch_utils, logger, run_funcs
 from core.agent.in_sample import InSampleAC, InACqG
 from core.agent.iql import IQL, IQLqG
-from core.agent.tsallis_awac import TKLPolicyInAC, TAWACqG
+from core.agent.tsallis_awac import TKLPolicyInAC, TAWACqG, TAWACqG_clip
 from core.agent.td3_bc import TD3BC
 from core.agent.awac import AWAC, AWACqG
 from core.agent.fattothin import FatToThin
@@ -54,6 +54,7 @@ if __name__ == '__main__':
     parser.add_argument('--tau', default=0.1, type=float)
     parser.add_argument('--expectile', default=0.8, type=float)
     parser.add_argument('--rho', default=0.8, type=float)
+    parser.add_argument('--zeta', default=0.2, type=float)
 
 
     cfg = parser.parse_args()
@@ -65,7 +66,7 @@ if __name__ == '__main__':
     cfg.exp_path = os.path.join(project_root, exp_path)
     torch_utils.ensure_dir(cfg.exp_path)
     cfg.env_fn = environment.EnvFactory.create_env_fn(cfg)
-    cfg.offline_data = run_funcs.load_testset(cfg.env_name, cfg.dataset, cfg.seed)
+    cfg.offline_data = run_funcs.load_testset(cfg.env_name, cfg.dataset, cfg.seed, cfg)
     cfg.q_lr = cfg.pi_lr * cfg.q_lr_prob
 
     # Setting up the logger
@@ -79,6 +80,10 @@ if __name__ == '__main__':
         agent_obj = InSampleAC(cfg)
     elif cfg.agent == "TAWAC":
         agent_obj = TKLPolicyInAC(cfg)
+    elif cfg.agent == "TAWACqG":
+        agent_obj = TAWACqG(cfg)
+    elif cfg.agent == "TAWACqGC":
+        agent_obj = TAWACqG_clip(cfg)
     elif cfg.agent == "TD3BC":
         agent_obj = TD3BC(cfg)
     elif cfg.agent == "AWAC":

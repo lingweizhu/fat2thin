@@ -7,6 +7,7 @@ from torch.distributions import Chi2, constraints
 from torch.distributions.distribution import Distribution
 from torch.distributions.utils import _standard_normal, broadcast_all
 
+from core.network import network_utils, network_bodies
 from core.network.network_architectures import FCNetwork
 
 __all__ = ["StudentT"]
@@ -132,8 +133,12 @@ class Student(nn.Module):
         self.df_net = FCNetwork(device, state_dim, hidden_units, num_actions,
                             head_activation=lambda x: nn.functional.softplus(x)+torch.tensor(1.000001))
 
-        self.mean_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([mean]*num_actions), requires_grad=True)
-        self.log_shape_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([shape]*num_actions), requires_grad=True)
+        # self.mean_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([mean]*num_actions), requires_grad=True)
+        # self.log_shape_net = FCNetwork(device, state_dim, hidden_units, num_actions) #nn.Parameter(torch.FloatTensor([shape]*num_actions), requires_grad=True)
+        self.base_network = network_bodies.FCBody(device, state_dim, hidden_units=tuple(hidden_units),
+                                                  init_type='xavier')
+        self.mean_head = network_utils.layer_init_xavier(nn.Linear(hidden_units[-1], num_actions))
+        self.logstd_head = network_utils.layer_init_xavier(nn.Linear(hidden_units[-1], num_actions))
 
         # self.student = StudentT(self.df, self.mean, self.shape ** 2)
 
@@ -145,14 +150,17 @@ class Student(nn.Module):
 
 
     def forward(self, x):
-        mean = torch.tanh(self.mean_net(x))
-        mean = ((mean + 1) / 2) * (self.action_max - self.action_min) + self.action_min  # ∈ [action_min, action_max]
-        # shape = self.shape_net(x)
-        shape = torch.exp(torch.clamp(self.log_shape_net(x), -14., self.log_upper_bound))
+        base = self.base_network(x)
+        mean = torch.tanh(self.mean_head(base))
+        # mean = torch.tanh(self.mean_net(x))
+        mean = ((mean + 1) / 2) * (
+                    self.action_max - self.action_min) + self.action_min  # ∈ [action_min, action_max]
+        shape = torch.exp(torch.clamp(self.logstd_head(base), -14., self.log_upper_bound))
+        # shape = torch.exp(torch.clamp(self.log_shape_net(x), -14., self.log_upper_bound))
         dfx = self.df_net(x)
         # dfx = torch.clamp(dfx, 0, 20)
         return mean, shape, dfx
-    
+
     def rsample(self, x, num_samples=1):
         mean, shape, dfx = self.forward(x)
         self.student = StudentT(dfx, mean, shape ** 2)
@@ -208,9 +216,11 @@ class StudentFixDF(Student):
         self.df = torch.FloatTensor([df]*num_actions)
 
     def forward(self, x):
-        mean = torch.tanh(self.mean_net(x))
+        # mean = torch.tanh(self.mean_net(x))
+        base = self.base_network(x)
+        mean = torch.tanh(self.mean_head(base))
         mean = ((mean + 1) / 2) * (
                     self.action_max - self.action_min) + self.action_min  # ∈ [action_min, action_max]
-        # shape = self.shape_net(x)
-        shape = torch.exp(torch.clamp(self.log_shape_net(x), -14., self.log_upper_bound))
+        # shape = torch.exp(torch.clamp(self.log_shape_net(x), -14., self.log_upper_bound))
+        shape = torch.exp(torch.clamp(self.logstd_head(base), -14., self.log_upper_bound))
         return mean, shape, self.df
