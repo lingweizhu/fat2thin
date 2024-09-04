@@ -15,7 +15,7 @@ class TsallisAwacTklLoss(base.ActorCritic):
         self.alpha = cfg.tau
         self.rho = cfg.rho
         self.n_action_proposals = 10
-        self.ratio_threshold = 0.2
+        self.ratio_threshold = cfg.zeta
         self.fdiv_name = cfg.fdiv_info[0]
         self.fdiv_term = int(cfg.fdiv_info[1])
         self.beh_pi = self.get_policy_func(cfg.discrete_control, cfg)
@@ -26,18 +26,19 @@ class TsallisAwacTklLoss(base.ActorCritic):
         # self.loss_entropic_index = 0.0
         self.entropic_index = cfg.tsallis_q
         self.loss_entropic_index = cfg.tsallis_q2
-        if self.loss_entropic_index == 0.:
-            self.clamp_ratio = self.clamp_ratio_0
-        elif self.loss_entropic_index == 0.5:
-            self.clamp_ratio = self.clamp_ratio_1_2
-        elif self.loss_entropic_index == 2./3.:
-            self.clamp_ratio = self.clamp_ratio_2_3
-        elif self.loss_entropic_index == 2.:
-            self.clamp_ratio = self.clamp_ratio_2_1
-        elif self.loss_entropic_index == 3.:
-            self.clamp_ratio = self.clamp_ratio_3_1
-        else:
-            raise NotImplementedError
+        self.clamp_ratio = self.clamp_ratio_auto
+        # if self.loss_entropic_index == 0.:
+        #     self.clamp_ratio = self.clamp_ratio_0
+        # elif self.loss_entropic_index == 0.5:
+        #     self.clamp_ratio = self.clamp_ratio_1_2
+        # elif self.loss_entropic_index == 2./3.:
+        #     self.clamp_ratio = self.clamp_ratio_2_3
+        # elif self.loss_entropic_index == 2.:
+        #     self.clamp_ratio = self.clamp_ratio_2_1
+        # elif self.loss_entropic_index == 3.:
+        #     self.clamp_ratio = self.clamp_ratio_3_1
+        # else:
+        #     raise NotImplementedError
 
         # if self.entropic_index == self.loss_entropic_index:
         #     self.get_baseline = self.get_baseline_max
@@ -67,6 +68,9 @@ class TsallisAwacTklLoss(base.ActorCritic):
 
     def clamp_ratio_3_1(self, ratio):
         return (torch.clamp(ratio**(-2), min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.) / (-2)
+
+    def clamp_ratio_auto(self, ratio):
+        return (torch.clamp(ratio**(1-self.loss_entropic_index), min=1-self.ratio_threshold, max=1+self.ratio_threshold) - 1.) / (1 - self.loss_entropic_index)
 
 
     def update_beh_pi(self, data):

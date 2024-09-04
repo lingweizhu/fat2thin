@@ -89,6 +89,14 @@ class IQL(base.ActorCritic):
         path = os.path.join(parameters_dir, "parameter"+timestamp)
         torch.save(params, path)
 
+    def load(self, parameters_dir, timestamp=''):
+        path = os.path.join(parameters_dir, "parameter"+timestamp)
+        model = torch.load(path)
+        self.ac.pi.load_state_dict(model["actor_net"])
+        self.ac.q1q2.load_state_dict(model["critic_net"])
+        self.value_net.load_state_dict(model["value_net"])
+
+
 from collections import namedtuple
 class IQLqG(IQL):
     def __init__(self, cfg):

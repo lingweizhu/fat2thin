@@ -2,6 +2,7 @@ import os
 import numpy as np
 import torch
 from core.agent import base
+from core.policy.gaussian import SquashedGaussian
 from core.policy.qGaussian import qHeavyTailedGaussian
 from core.policy.student import Student
 from core.network.network_architectures import FCNetwork
@@ -40,9 +41,16 @@ class FatToThin(base.ActorCritic):
             self.calculate_actor_loss = self.actor_spot
         elif self.cfg.actor_loss == "TAWAC":
             self.calculate_actor_loss = self.actor_tawac # TODO: Need to check the math
+        else:
+            raise NotImplementedError
 
         if cfg.proposal_distribution == "HTqGaussian":
             self.proposal = qHeavyTailedGaussian(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units]*2, cfg.action_min, cfg.action_max, entropic_index=cfg.distribution_param)
+            if cfg.distribution == "qGaussian":
+                self.proposal.load_state_dict(self.ac.pi.state_dict())
+        elif cfg.proposal_distribution == "SGaussian":
+            self.proposal = SquashedGaussian(cfg.device, cfg.state_dim, cfg.action_dim,
+                                    [cfg.hidden_units] * 2, cfg.action_min, cfg.action_max)
             if cfg.distribution == "qGaussian":
                 self.proposal.load_state_dict(self.ac.pi.state_dict())
         elif cfg.proposal_distribution == "Student":
@@ -127,6 +135,8 @@ class FatToThin(base.ActorCritic):
         return actor_loss
 
     def actor_kl(self, state_batch, action_batch): # TODO: this may need a GAC style update!!!!
+        self.ac.pi.base_network.load_state_dict(self.proposal.base_network.state_dict())
+        self.ac.pi.mean_head.load_state_dict(self.proposal.mean_head.state_dict())
         action_samples, logp = self.ac.pi.rsample(state_batch)
         with torch.no_grad():
             proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
@@ -141,14 +151,16 @@ class FatToThin(base.ActorCritic):
         return actor_loss
 
     def actor_copy_pi(self, state_batch, action_batch):
-        self.ac.pi.mean_net.load_state_dict(self.proposal.mean_net.state_dict())
+        self.ac.pi.base_network.load_state_dict(self.proposal.base_network.state_dict())
+        self.ac.pi.mean_head.load_state_dict(self.proposal.mean_head.state_dict())
         action_samples, _ = self.ac.pi.rsample(state_batch)
         proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
         actor_loss = -proposal_logprob.mean()
         return actor_loss
 
     def actor_copy_proposal(self, state_batch, action_batch):
-        self.ac.pi.mean_net.load_state_dict(self.proposal.mean_net.state_dict())
+        self.ac.pi.base_network.load_state_dict(self.proposal.base_network.state_dict())
+        self.ac.pi.mean_head.load_state_dict(self.proposal.mean_head.state_dict())
         action_samples, _ = self.proposal.sample(state_batch)
         logprob = self.ac.pi.log_prob(state_batch, action_samples)
         actor_loss = -logprob.mean()
@@ -168,6 +180,8 @@ class FatToThin(base.ActorCritic):
         return actor_loss
 
     def actor_gac(self, state_batch, action_batch):
+        self.ac.pi.base_network.load_state_dict(self.proposal.base_network.state_dict())
+        self.ac.pi.mean_head.load_state_dict(self.proposal.mean_head.state_dict())
         stacked_s_batch_full = state_batch.repeat_interleave(self.n_action_proposals, dim=0)
         action_samples, _ = self.ac.pi.sample(stacked_s_batch_full)
         stacked_s_batch_full, stacked_s_batch, best_actions = self._get_best_actions(state_batch, stacked_s_batch_full, action_samples)
@@ -180,6 +194,8 @@ class FatToThin(base.ActorCritic):
         return actor_loss
 
     def actor_spot(self, state_batch, action_batch):
+        self.ac.pi.base_network.load_state_dict(self.proposal.base_network.state_dict())
+        self.ac.pi.mean_head.load_state_dict(self.proposal.mean_head.state_dict())
         action_samples, _ = self.ac.pi.rsample(state_batch)
         min_Q, _, _ = self.get_q_value(state_batch, action_samples, with_grad=True)
         with torch.no_grad():
@@ -199,6 +215,8 @@ class FatToThin(base.ActorCritic):
         return actor_loss
 
     def actor_tawac(self, state_batch, action_batch):
+        self.ac.pi.base_network.load_state_dict(self.proposal.base_network.state_dict())
+        self.ac.pi.mean_head.load_state_dict(self.proposal.mean_head.state_dict())
         action_samples, _ = self.ac.pi.rsample(state_batch)
         min_Q, _, _ = self.get_q_value(state_batch, action_batch, with_grad=True)
         with torch.no_grad():

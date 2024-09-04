@@ -131,11 +131,37 @@ class TKLPolicyInAC(base.ActorCritic):
         self.ac.q1q2.load_state_dict(model["critic_net"])
         self.value_net.load_state_dict(model["value_net"])
 
+class TAWACqG_clip(TKLPolicyInAC):
+    def __init__(self, cfg):
+        super(TAWACqG_clip, self).__init__(cfg)
+        self.project_threshold = -30
+
+    def compute_loss_pi(self, data):
+        """L_{\psi}, extract learned policy"""
+        states, actions = data['obs'], data['act']
+        log_probs = self.ac.pi.log_prob(states, actions)
+        project_idx = torch.where(torch.isinf(log_probs))
+        log_probs[project_idx] = self.project_threshold
+
+        min_Q, _, _ = self.get_q_value(states, actions, with_grad=False)
+
+        with torch.no_grad():
+            value = self.get_state_value(states)
+        x = (min_Q - value) / self.tau
+
+        tsallis_policy = self.expq_x(x)
+        clipped = torch.clip(tsallis_policy, self.eps, self.exp_threshold)
+        pi_loss = -(clipped * log_probs).mean()
+        # print("pi", clipped.size(), log_probs.size(), tsallis_policy.size(), value.size(), min_Q.size(), psi.size())
+        return pi_loss, ""
+
+
 class TAWACqG(TKLPolicyInAC):
     def __init__(self, cfg):
         super(TAWACqG, self).__init__(cfg)
-        self.beh_pi = Student(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units] * 2,
-                              cfg.action_min, cfg.action_max, df=cfg.distribution_param)
+        # self.beh_pi = Student(cfg.device, cfg.state_dim, cfg.action_dim, [cfg.hidden_units] * 2,
+        #                       cfg.action_min, cfg.action_max, df=cfg.distribution_param)
+        self.beh_pi = self.get_policy_func(cfg.discrete_control, cfg)
         self.beh_pi_optimizer = torch.optim.Adam(list(self.beh_pi.parameters()), cfg.pi_lr)
 
     def compute_loss_beh_pi(self, data):
