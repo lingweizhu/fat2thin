@@ -37,6 +37,20 @@ DEFAULT_ENV = {
 }
 
 DEFAULT_AGENT = {
+    "SimEnv3-random": {
+        "FTT": {
+        },
+        "IQL": {
+        },
+        "InAC": {
+        },
+        "TAWAC":{
+        },
+        "AWAC":{
+        },
+        "TD3BC":{
+        },
+    },
     "HalfCheetah-expert": {
         "IQL": {
             " --expectile ": [0.7],

@@ -1,4 +1,32 @@
 BEST_AGENT = {
+    "SimEnv3-random-qGaussian": {
+        "FTT": {
+            " --param ": [
+                2
+            ],
+            " --pi_lr ": [
+                0.0003
+            ]
+        },
+    },
+    "SimEnv3-random-SGaussian": {
+        "IQL": {
+            " --param ": [
+                23
+            ],
+            " --pi_lr ": [
+                3e-05
+            ]
+        },
+        "TAWAC": {
+            " --param ": [
+                19
+            ],
+            " --pi_lr ": [
+                3e-05
+            ]
+        },
+    },
     "Ant-expert-Student": {
         "TAWAC": {
             " --tau ": [
@@ -11,6 +39,97 @@ BEST_AGENT = {
                 0.01
             ]
         },
+    },
+
+"HalfCheetah-medexp-qGaussian": {
+        "FTT": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.001
+            ]
+        }
+    },
+    "HalfCheetah-medium-qGaussian": {
+        "FTT": {
+            " --param ": [
+                2
+            ],
+            " --pi_lr ": [
+                0.001
+            ]
+        }
+    },
+    "HalfCheetah-medrep-qGaussian": {
+        "FTT": {
+            " --param ": [
+                2
+            ],
+            " --pi_lr ": [
+                0.001
+            ]
+        }
+    },
+    "Hopper-medexp-qGaussian": {
+        "FTT": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.001
+            ]
+        }
+    },
+    "Hopper-medium-qGaussian": {
+        "FTT": {
+            " --param ": [
+                1
+            ],
+            " --pi_lr ": [
+                0.001
+            ]
+        }
+    },
+    "Hopper-medrep-qGaussian": {
+        "FTT": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.001
+            ]
+        }
+    },
+    "Walker2d-medexp-qGaussian": {
+        "FTT": {
+            " --param ": [
+                1
+            ],
+            " --pi_lr ": [
+                0.001
+            ]
+        }
+    },
+    "Walker2d-medium-qGaussian": {
+        "FTT": {
+            " --param ": [
+                1
+            ],
+            " --pi_lr ": [
+                0.001
+            ]
+        }
+    },
+    "Walker2d-medrep-qGaussian": {
+        "FTT": {
+            " --param ": [
+                1
+            ],
+            " --pi_lr ": [
+                0.001
+            ]
+        }
     },
 
     "HalfCheetah-medexp-SGaussian": {

@@ -8,6 +8,9 @@ from core.agent.iql import IQL, IQLqG
 from core.agent.tsallis_awac import TKLPolicyInAC, TAWACqG, TAWACqG_clip
 from core.agent.td3_bc import TD3BC
 from core.agent.awac import AWAC, AWACqG
+from core.agent.sql import SQL
+from core.agent.xql import XQL
+from core.agent.spot import SPOT
 from core.agent.fattothin import FatToThin
 from core.agent.ttt_awac import TsallisAwacTklLoss
 
@@ -88,6 +91,12 @@ if __name__ == '__main__':
         agent_obj = TD3BC(cfg)
     elif cfg.agent == "AWAC":
         agent_obj = AWAC(cfg)
+    elif cfg.agent == "SQL":
+        agent_obj = SQL(cfg)
+    elif cfg.agent == "XQL":
+        agent_obj = XQL(cfg)
+    elif cfg.agent == "SPOT":
+        agent_obj = SPOT(cfg)
     elif cfg.agent == "FTT":
         agent_obj = FatToThin(cfg)
     elif cfg.agent == "TTT":

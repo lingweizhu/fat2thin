@@ -14,8 +14,13 @@ from core.utils import torch_utils
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 import core.environment.env_factory as environment
 
+plt.rcParams["font.family"] = "Times New Roman"
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "Times New Roman",
+    "font.sans-serif": "Helvetica",
+})
 
-EARLYCUTOFF = "EarlyCutOff"
 
 
 def load_testset(env_name, dataset, id, cfg):
@@ -117,7 +122,7 @@ def run_steps(agent, max_steps, log_interval, eval_pth):
             evaluations.append(mean)
             t0 = time.time()
         if max_steps and agent.total_steps >= max_steps:
-            # agent.save(timestamp="_{}".format(agent.total_steps))
+            agent.save(timestamp="_{}".format(agent.total_steps))
             break
         agent.step()
     # agent.save(timestamp="_{}".format(agent.total_steps))
@@ -232,9 +237,14 @@ def policy_evolution(cfg, agent, num_samples=500):
 
 def policy_evolution_multipolicy(cfg, agent_objs, time_color, num_samples=500, alpha=0.8):
     from plot.utils import formal_distribution_name, formal_dataset_name
+    if cfg.env_name == "SimEnv3" and cfg.log_interval == cfg.max_steps:
+        simenv3_final_policy_samples(cfg, agent_objs, time_color, num_samples, alpha)
+        return
+
     init_state = agent_objs[0].env.reset().reshape((1, -1))
     state = torch_utils.tensor(agent_objs[0].state_normalizer(init_state), agent_objs[0].device)
     state = state.repeat_interleave(num_samples, dim=0)
+
     for i in range(0, agent_objs[0].action_dim):
         fig, ax = plt.subplots(1, 1, figsize=(4.5, 4), dpi=300, subplot_kw={'projection': '3d'})
         zeros0 = np.zeros((num_samples, i))
@@ -292,3 +302,53 @@ def policy_evolution_multipolicy(cfg, agent_objs, time_color, num_samples=500, a
         plt.legend(loc='lower left', bbox_to_anchor=(-0, 0.75), prop={'size': 10}, ncol=1, frameon=False)
         plt.tight_layout()
         plt.savefig(cfg.exp_path+"/vis_dim{}.png".format(i), dpi=300)
+
+def simenv3_final_policy_samples(cfg, agent_objs, time_color, num_samples=500, alpha=0.8):
+    from plot.utils import formal_distribution_name, formal_dataset_name
+    state = agent_objs[0].env.reset()
+    for _ in range(10):
+        a = np.random.uniform(low=-1, high=1, size=1)
+        state, _, done, _ = agent_objs[0].env.step([a])
+        assert not done
+    state = state.reshape((1, -1))
+    state = torch_utils.tensor(agent_objs[0].state_normalizer(state), agent_objs[0].device)
+    repeated_state = state.repeat_interleave(num_samples, dim=0)
+    xs = np.linspace(-3, 3, num=num_samples).reshape((num_samples, 1))
+    # next_s = [agent_objs[0].env.get_state(agent_objs[0].env.last_mu, agent_objs[0].env.cor, a)[1]
+    #           for a in xs]
+    # rewards = [agent_objs[0].env.get_reward(ns, a)[0] for ns, a in zip(next_s, xs)]
+    for i in range(0, agent_objs[0].action_dim):
+        fig, ax = plt.subplots(1, 1, figsize=(3, 3), dpi=300)
+        # ax.plot(xs, rewards, c='black')
+        zeros0 = np.zeros((num_samples, i))
+        zeros1 = np.zeros((num_samples, cfg.action_dim - 1 - i))
+        actions = np.concatenate([zeros0, xs, zeros1], axis=1)
+        actions = torch_utils.tensor(actions, agent_objs[0].device)
+
+        plot_ys = {}
+        for agent in agent_objs:
+            agent.load(agent.cfg.load_network, "_{}".format(int(cfg.log_interval)))
+            with torch.no_grad():
+                dist, mean, shape, dfx = agent.ac.pi.distribution(state, dim=i)
+                density = torch.exp(dist.log_prob(actions[:, i:i+1])).detach().cpu().numpy()
+            plot_ys[agent.cfg.distribution] = density.flatten()
+
+        for agent in agent_objs:
+            plot_ys_dist = np.asarray(plot_ys[agent.cfg.distribution])
+            ys = np.asarray(plot_ys[agent.cfg.distribution])
+            # if cfg.density_normalization:
+            #     ys = (ys - plot_ys_dist.min()) / (plot_ys_dist.max() - plot_ys_dist.min())
+            ax.plot(xs.flatten(), ys, color=time_color["{} {}".format(agent.cfg.agent, agent.cfg.distribution)][-1], alpha=alpha)
+        for agent in agent_objs:
+            ax.plot([], [], color=time_color["{} {}".format(agent.cfg.agent, agent.cfg.distribution)][-1], linestyle='-',
+                    label="{} {}".format(agent.cfg.agent, formal_distribution_name[agent.cfg.distribution]), alpha=alpha)
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_ylabel(r'Density')
+        ax.set_xlabel(r'Action')
+        plt.subplots_adjust(top=0.8, left=0.2, bottom=0.2)
+        fig.text(0.17, 0.92, "Final Policy on {} {}".format(cfg.env_name, formal_dataset_name[cfg.dataset]), fontsize=10)
+        plt.legend(loc='lower left', bbox_to_anchor=(0, 0.94), prop={'size': 8}, ncol=1, frameon=False)
+        # plt.tight_layout()
+        plt.savefig(cfg.exp_path+"/vis_final_dim{}.png".format(i), dpi=300)
