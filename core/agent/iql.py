@@ -143,7 +143,7 @@ class IQLqG(IQL):
         else:
             nonzeros = torch.where(log_pi_beta > -6.)[0]
             pi_loss = (log_pi - log_pi_beta - adv)[nonzeros].sum()/len(log_pi)
-        print(log_pi.mean(), log_pi_beta.mean(), adv.mean(), pi_loss)
+        # print(log_pi.mean(), log_pi_beta.mean(), adv.mean(), pi_loss)
         # print("pi", log_pi.size(), log_pi_beta.size(), min_Q.size(), v.size())
         return pi_loss, log_pi
 

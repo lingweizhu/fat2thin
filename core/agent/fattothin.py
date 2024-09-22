@@ -140,7 +140,11 @@ class FatToThin(base.ActorCritic):
         action_samples, logp = self.ac.pi.rsample(state_batch)
         with torch.no_grad():
             proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
-        actor_loss = (logp - proposal_logprob).mean()
+        # actor_loss = (logp - proposal_logprob).mean()
+        # r = torch.exp(proposal_logprob - logp)
+        actor_loss = (torch.exp(proposal_logprob - logp) - 1.) - (proposal_logprob - logp)
+        actor_loss = actor_loss.mean()
+        # print("kl", logp.mean(), proposal_logprob.mean())
         # print(logp.shape, proposal_logprob.shape, (logp - proposal_logprob).shape)
 
         # print()

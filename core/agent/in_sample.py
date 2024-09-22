@@ -121,6 +121,15 @@ class InSampleAC(base.ActorCritic):
         path = os.path.join(parameters_dir, "parameter"+timestamp)
         torch.save(params, path)
 
+    def load(self, parameters_dir, timestamp=''):
+        path = os.path.join(parameters_dir, "parameter"+timestamp)
+        model = torch.load(path)
+        self.ac.pi.load_state_dict(model["actor_net"])
+        self.ac.q1q2.load_state_dict(model["critic_net"])
+        self.value_net.load_state_dict(model["value_net"])
+        self.beh_pi.load_state_dict(model["behavior_net"])
+
+
 
 class InACqG(InSampleAC):
     def __init__(self, cfg):
@@ -176,3 +185,13 @@ class InACqG(InSampleAC):
         }
         path = os.path.join(parameters_dir, "parameter"+timestamp)
         torch.save(params, path)
+
+    def load(self, parameters_dir, timestamp=''):
+        path = os.path.join(parameters_dir, "parameter"+timestamp)
+        model = torch.load(path)
+        self.ac.pi.load_state_dict(model["actor_net"])
+        self.ac.q1q2.load_state_dict(model["critic_net"])
+        self.value_net.load_state_dict(model["value_net"])
+        self.beh_pi.load_state_dict(model["behavior_net"])
+        self.beh_slow.load_state_dict(model["behavior_slow"])
+
