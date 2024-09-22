@@ -1,8 +1,8 @@
 import os
 
-from core.environment.mountaincar import MountainCar
-from core.environment.acrobot import Acrobot
-from core.environment.lunarlander import LunarLander
+# from core.environment.mountaincar import MountainCar
+# from core.environment.acrobot import Acrobot
+# from core.environment.lunarlander import LunarLander
 from core.environment.halfcheetah import HalfCheetah
 from core.environment.walker2d import Walker2d
 from core.environment.hopper import Hopper
@@ -12,13 +12,7 @@ from core.environment.simulations import SimEnv3
 class EnvFactory:
     @classmethod
     def create_env_fn(cls, cfg):
-        if cfg.env_name == 'MountainCar':
-            return lambda: MountainCar(cfg.seed)
-        elif cfg.env_name == 'Acrobot':
-            return lambda: Acrobot(cfg.seed)
-        elif cfg.env_name == 'LunarLander':
-            return lambda: LunarLander(cfg.seed)
-        elif cfg.env_name == 'HalfCheetah':
+        if cfg.env_name == 'HalfCheetah':
             return lambda: HalfCheetah(cfg.seed)
         elif cfg.env_name == 'Walker2d':
             return lambda: Walker2d(cfg.seed)
@@ -28,6 +22,12 @@ class EnvFactory:
             return lambda: Ant(cfg.seed)
         elif cfg.env_name == 'SimEnv3':
             return lambda: SimEnv3(cfg.seed)
+        # elif cfg.env_name == 'MountainCar':
+        #     return lambda: MountainCar(cfg.seed)
+        # elif cfg.env_name == 'Acrobot':
+        #     return lambda: Acrobot(cfg.seed)
+        # elif cfg.env_name == 'LunarLander':
+        #     return lambda: LunarLander(cfg.seed)
         else:
             print(cfg.env_name)
             raise NotImplementedError
