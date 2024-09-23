@@ -78,6 +78,8 @@ def projection_baseline():
     plt.savefig("img/projection_baseline.pdf", dpi=300)
 
 def main_results():
+    # envs = ["HalfCheetah"]
+    # datasets = ["medexp"]
     envs = ["HalfCheetah", "Hopper", "Walker2d"]
     datasets = ["medexp", "medrep", "medium"]
     pths = {
@@ -91,6 +93,8 @@ def main_results():
         # "TAWAC-HTqG": "../data/baseline_data/output/test_v1/{}/{}/TAWAC/HTqGaussian/",
         "TAWAC": "../data/baseline_data/output/test_v1/{}/{}/TAWAC/SGaussian/",
         "AWAC": "../data/baseline_data/output/test_v1/{}/{}/AWAC/SGaussian/",
+        "XQL": "../data/output/test_v1/baseline/{}/{}/XQL/SGaussian/",
+        "SQL": "../data/output/test_v1/baseline/{}/{}/SQL/SGaussian/",
     }
     colors = {
         "FTT": color_default[0],
@@ -100,9 +104,12 @@ def main_results():
         "InAC": color_default[2],
         "TAWAC": color_default[3],
         "AWAC": color_default[4],
+        "XQL": 'black',
+        "SQL": 'grey',
     }
     fig, axs = plt.subplots(len(envs), len(datasets),
                             figsize=(2.8 * len(datasets), 2 * len(envs)))
+    # axs = np.asarray([[axs]])
     axs, handle_list, label_list = formated_learning_curve(axs, pths, envs, datasets, colors)
     hc_y = [0, 0.5, 1]
     for row in range(len(envs)):
@@ -131,15 +138,21 @@ def simulation_exp():
     datasets = ["random"]
     pths = {
         "FTT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
-        "FTT-SG": "../data/output/test_v1/test_FTT/proposal_SG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
+        # "FTT-SG": "../data/output/test_v1/test_FTT/proposal_SG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
         "IQL": "../data/output/test_v1/baseline/{}/{}/IQL/SGaussian/",
-        "TAWAC": "../data/output/test_v1/baseline/{}/{}/TAWAC/SGaussian/",
+        "XQL": "../data/output/test_v1/baseline/{}/{}/XQL/SGaussian/",
+        "SQL": "../data/output/test_v1/baseline/{}/{}/SQL/SGaussian/",
+        "SPOT": "../data/output/test_v1/baseline/{}/{}/SPOT/SGaussian/",
+        # "TAWAC": "../data/output/test_v1/baseline/{}/{}/TAWAC/SGaussian/",
     }
     colors = {
-        "FTT-SG": color_default[1],
         "FTT": color_default[0],
-        "IQL": color_default[2],
-        "TAWAC": color_default[3],
+        "IQL": color_default[1],
+        "XQL": color_default[2],
+        "SQL": color_default[3],
+        "SPOT": color_default[4],
+        # "FTT-SG": color_default[1],
+        # "TAWAC": color_default[3],
     }
     fig, axs = plt.subplots(len(envs), len(datasets), figsize=(3, 2.5))
     axs = np.array([[axs]])
@@ -230,7 +243,7 @@ def tawac_htqg():
 
 if __name__ == "__main__":
     # projection_baseline()
-    main_results()
-    # simulation_exp()
+    # main_results()
+    simulation_exp()
     # spot()
     # tawac_htqg()

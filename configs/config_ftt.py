@@ -472,13 +472,13 @@ def c20240917():
     target_envs = ['SimEnv3']
     target_datasets = ['random']
     target_agents = ['FTT']
-    # sweep[" --distributions "] = ['qGaussian HTqGaussian SGaussian']
-    sweep[" --distributions "] = ['qGaussian SGaussian']
-    # sweep[" --agents "] = ['FTT IQL TAWAC']
-    sweep[" --agents "] = ['FTT IQL']
+    sweep[" --distributions "] = ['qGaussian HTqGaussian SGaussian']
+    # sweep[" --distributions "] = ['qGaussian SGaussian']
+    sweep[" --agents "] = ['FTT IQL TAWAC']
+    # sweep[" --agents "] = ['FTT IQL']
     sweep[" --load_network_paths "] = ['data/output/final_policy/SimEnv3/random/FTT/qGaussian/2_param/3_run/parameters/ '
                                        'data/output/final_policy/SimEnv3/random/IQL/SGaussian/23_param/3_run/parameters/ '
-                                       # 'data/output/final_policy/SimEnv3/random/TAWAC/SGaussian/19_param/0_run/parameters/ '
+                                       'data/output/final_policy/SimEnv3/random/TAWAC/SGaussian/19_param/0_run/parameters/ '
                                        ]
     policy_evolution_scripts(sweep, target_agents, target_envs, target_datasets,
                              num_runs=1, run_base=0, comb_num_base=0,
@@ -501,11 +501,37 @@ def c20240918():
     add_seed_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, defined_param=BEST_AGENT,
                      num_runs=3, run_base=0, comb_num_base=0, prev_file=27, line_per_file=1)
 
+def c20240921():
+    sweep = {
+        " --log_interval ": [1000000],
+        " --max_steps ": [1000000],
+        " --proposal_distribution ": ["HTqGaussian"],
+        " --info ": ["final_policy_plot/"],
+    }
+
+    target_envs = ['HalfCheetah']
+    target_datasets = ['medexp']
+    target_agents = ['FTT']
+    sweep[" --distributions "] = ['qGaussian SGaussian SGaussian SGaussian']
+    sweep[" --agents "] = ['FTT IQL TAWAC InAC']
+    sweep[" --load_network_paths "] = ['data/output/final_policy/HalfCheetah/medexp/FTT/qGaussian/0_param/0_run/parameters/ '
+                                       'data/output/final_policy/HalfCheetah/medexp/IQL/SGaussian/1_param/0_run/parameters/ '
+                                       'data/output/final_policy/HalfCheetah/medexp/TAWAC/SGaussian/0_param/0_run/parameters/ '
+                                       'data/output/final_policy/HalfCheetah/medexp/InAC/SGaussian/0_param/0_run/parameters/ '
+                                       # 'data/output/final_policy/HalfCheetah/medexp/AWAC/SGaussian/1_param/0_run/parameters/ '
+                                       # 'data/output/final_policy/HalfCheetah/medexp/TD3BC/SGaussian/1_param/0_run/parameters/ '
+                                       ]
+    policy_evolution_scripts(sweep, target_agents, target_envs, target_datasets,
+                             num_runs=1, run_base=0, comb_num_base=0,
+                             prev_file=0, line_per_file=1)
+
+
 if __name__ == "__main__":
     # c20240829() # policy evolution
     # c20240902() # policy evolution plot
-    # c20240906() # main results
-    c20240914() # simEnv3 baseline
+    c20240906() # main results
+    # c20240914() # simEnv3 baseline
     # c20240916() # simEnv3 save final policy
-    # c20240917() # final policy plot
+    # c20240917() # simEnv3 final policy plot
     # c20240918() # D4RL save final policy
+    # c20240921() # D4RL final policy plot
