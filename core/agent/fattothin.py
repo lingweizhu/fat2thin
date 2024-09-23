@@ -141,10 +141,12 @@ class FatToThin(base.ActorCritic):
         with torch.no_grad():
             proposal_logprob = self.proposal.log_prob(state_batch, action_samples)
         # actor_loss = (logp - proposal_logprob).mean()
+
         # r = torch.exp(proposal_logprob - logp)
-        actor_loss = (torch.exp(proposal_logprob - logp) - 1.) - (proposal_logprob - logp)
+        actor_loss = (torch.clip(torch.exp(proposal_logprob - logp), 0, self.exp_threshold) - 1.) - (proposal_logprob - logp)
         actor_loss = actor_loss.mean()
-        # print("kl", logp.mean(), proposal_logprob.mean())
+        # print("kl", logp.mean(), proposal_logprob.mean(), torch.exp(proposal_logprob - logp).mean(),
+        #       actor_loss)
         # print(logp.shape, proposal_logprob.shape, (logp - proposal_logprob).shape)
 
         # print()

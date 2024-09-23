@@ -428,6 +428,8 @@ class qMultivariateGaussian(nn.Module):
         mean = torch.clamp(mean, -1. + 1e-6, 1. - 1e-6)
         mean = ((mean + 1) / 2) * (self.action_max - self.action_min) + self.action_min  # ∈ [action_min, action_max]
         shape = torch.exp(torch.clamp(self.logstd_head(base), -14., self.log_upper_bound))
+        # shape = torch.exp(self.logstd_head(base))
+
         # shape = torch.exp(torch.clamp(self.log_shape_net(x), -14., self.log_upper_bound))
         return mean, shape
     
@@ -448,10 +450,11 @@ class qMultivariateGaussian(nn.Module):
     
     def sample(self, x, num_samples=1, deterministic=False):
         mean, shape = self.forward(x)
-        self.mvbg = MultivariateBetaGaussianDiag(mean, shape, alpha=self.entropic_index)
         # with torch.no_grad():
         #     self.mvbg = MultivariateBetaGaussianDiag(mean, shape ** 2, alpha=self.entropic_index_net(x).squeeze(1))
-        actions = self.mvbg.sample(sample_shape=(num_samples,)).detach()
+        with torch.no_grad():
+            self.mvbg = MultivariateBetaGaussianDiag(mean, shape, alpha=self.entropic_index)
+            actions = self.mvbg.sample(sample_shape=(num_samples,)).detach()
         if num_samples == 1:
             actions = actions.squeeze(0)
         actions = torch.clamp(actions, self.action_min, self.action_max)

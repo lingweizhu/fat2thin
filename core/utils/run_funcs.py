@@ -14,12 +14,12 @@ from core.utils import torch_utils
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 import core.environment.env_factory as environment
 
-plt.rcParams["font.family"] = "Times New Roman"
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "Times New Roman",
-    "font.sans-serif": "Helvetica",
-})
+# plt.rcParams["font.family"] = "Times New Roman"
+# plt.rcParams.update({
+#     "text.usetex": True,
+#     "font.family": "Times New Roman",
+#     "font.sans-serif": "Helvetica",
+# })
 
 
 
@@ -235,10 +235,11 @@ def policy_evolution(cfg, agent, num_samples=500):
         plt.savefig(cfg.exp_path+"/{}_vis_dim{}.png".format(cfg.distribution, i), dpi=300)
         # plt.show()
 
-def policy_evolution_multipolicy(cfg, agent_objs, time_color, num_samples=500, alpha=0.8):
+def policy_evolution_multipolicy(cfg, agent_objs, time_color, num_samples=50, alpha=0.8):
     from plot.utils import formal_distribution_name, formal_dataset_name
-    if cfg.env_name == "SimEnv3" and cfg.log_interval == cfg.max_steps:
-        simenv3_final_policy_samples(cfg, agent_objs, time_color, num_samples, alpha)
+    # if cfg.env_name == "SimEnv3" and cfg.log_interval == cfg.max_steps:
+    if cfg.log_interval == cfg.max_steps:
+        final_policy_samples(cfg, agent_objs, time_color, num_samples, alpha)
         return
 
     init_state = agent_objs[0].env.reset().reshape((1, -1))
@@ -303,17 +304,21 @@ def policy_evolution_multipolicy(cfg, agent_objs, time_color, num_samples=500, a
         plt.tight_layout()
         plt.savefig(cfg.exp_path+"/vis_dim{}.png".format(i), dpi=300)
 
-def simenv3_final_policy_samples(cfg, agent_objs, time_color, num_samples=500, alpha=0.8):
+def final_policy_samples(cfg, agent_objs, time_color, num_samples=50, alpha=0.8):
     from plot.utils import formal_distribution_name, formal_dataset_name
     state = agent_objs[0].env.reset()
-    for _ in range(10):
-        a = np.random.uniform(low=-1, high=1, size=1)
-        state, _, done, _ = agent_objs[0].env.step([a])
-        assert not done
+    # for _ in range(10):
+    #     a = np.random.uniform(low=-1, high=1, size=1)
+    #     state, _, done, _ = agent_objs[0].env.step([a])
+    #     assert not done
     state = state.reshape((1, -1))
     state = torch_utils.tensor(agent_objs[0].state_normalizer(state), agent_objs[0].device)
     repeated_state = state.repeat_interleave(num_samples, dim=0)
-    xs = np.linspace(-3, 3, num=num_samples).reshape((num_samples, 1))
+    if cfg.env_name == "SimEnv3":
+        x = 1
+    else:
+        x = 1
+    xs = np.linspace(-x, x, num=num_samples).reshape((num_samples, 1))
     # next_s = [agent_objs[0].env.get_state(agent_objs[0].env.last_mu, agent_objs[0].env.cor, a)[1]
     #           for a in xs]
     # rewards = [agent_objs[0].env.get_reward(ns, a)[0] for ns, a in zip(next_s, xs)]
@@ -326,29 +331,42 @@ def simenv3_final_policy_samples(cfg, agent_objs, time_color, num_samples=500, a
         actions = torch_utils.tensor(actions, agent_objs[0].device)
 
         plot_ys = {}
+        plot_ys2 = {}
         for agent in agent_objs:
             agent.load(agent.cfg.load_network, "_{}".format(int(cfg.log_interval)))
             with torch.no_grad():
                 dist, mean, shape, dfx = agent.ac.pi.distribution(state, dim=i)
+                print(agent.cfg.agent, mean, shape)
                 density = torch.exp(dist.log_prob(actions[:, i:i+1])).detach().cpu().numpy()
-            plot_ys[agent.cfg.distribution] = density.flatten()
+                try:
+                    dist, mean, shape, dfx = agent.proposal.distribution(state, dim=i)
+                    density2 = torch.exp(dist.log_prob(actions[:, i:i + 1])).detach().cpu().numpy()
+                    plot_ys2["{}-{}".format(agent.cfg.agent, agent.cfg.distribution)] = density2.flatten()
+                except:
+                    pass
+            plot_ys["{}-{}".format(agent.cfg.agent, agent.cfg.distribution)] = density.flatten()
 
         for agent in agent_objs:
-            plot_ys_dist = np.asarray(plot_ys[agent.cfg.distribution])
-            ys = np.asarray(plot_ys[agent.cfg.distribution])
+            # plot_ys_dist = np.asarray(plot_ys["{}-{}".format(agent.cfg.agent, agent.cfg.distribution)])
+            ys = np.asarray(plot_ys["{}-{}".format(agent.cfg.agent, agent.cfg.distribution)])
             # if cfg.density_normalization:
-            #     ys = (ys - plot_ys_dist.min()) / (plot_ys_dist.max() - plot_ys_dist.min())
+            #     ys = (ys - ys.min()) / (ys.max() - ys.min())
             ax.plot(xs.flatten(), ys, color=time_color["{} {}".format(agent.cfg.agent, agent.cfg.distribution)][-1], alpha=alpha)
+            if "{}-{}".format(agent.cfg.agent, agent.cfg.distribution) in plot_ys2:
+                ys2 = np.asarray(plot_ys2["{}-{}".format(agent.cfg.agent, agent.cfg.distribution)])
+                # ys2 = (ys2 - ys2.min()) / (ys2.max() - ys2.min())
+                ax.plot(xs.flatten(), ys2, color=time_color["{} {}".format(agent.cfg.agent, agent.cfg.distribution)][-1], alpha=alpha, ls="--")
         for agent in agent_objs:
             ax.plot([], [], color=time_color["{} {}".format(agent.cfg.agent, agent.cfg.distribution)][-1], linestyle='-',
                     label="{} {}".format(agent.cfg.agent, formal_distribution_name[agent.cfg.distribution]), alpha=alpha)
-
+        ax.set_ylim(0, 2)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.set_ylabel(r'Density')
         ax.set_xlabel(r'Action')
         plt.subplots_adjust(top=0.8, left=0.2, bottom=0.2)
         fig.text(0.17, 0.92, "Final Policy on {} {}".format(cfg.env_name, formal_dataset_name[cfg.dataset]), fontsize=10)
-        plt.legend(loc='lower left', bbox_to_anchor=(0, 0.94), prop={'size': 8}, ncol=1, frameon=False)
+        # plt.legend(loc='lower left', bbox_to_anchor=(0, 0.94), prop={'size': 8}, ncol=1, frameon=False)
+        plt.legend(loc='lower left', bbox_to_anchor=(0, 0.94), prop={'size': 5}, ncol=1, frameon=False)
         # plt.tight_layout()
         plt.savefig(cfg.exp_path+"/vis_final_dim{}.png".format(i), dpi=300)
