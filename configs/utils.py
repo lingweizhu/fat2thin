@@ -95,7 +95,7 @@ def policy_evolution_scripts(sweep_params, target_agents, target_envs, target_da
     write_to_file(cmds, prev_file=prev_file, line_per_file=line_per_file)
 
 def add_seed_scripts(sweep_params, target_agents, target_envs, target_datasets, target_distributions,
-                     defined_param=BEST_AGENT, num_runs=5, run_base=0, comb_num_base=0, prev_file=0, line_per_file=1):
+                     defined_param=BEST_AGENT, ftt_key=None, num_runs=5, run_base=0, comb_num_base=0, prev_file=0, line_per_file=1):
     agent_parameters = copy.deepcopy(defined_param)
     cmds = []
     aedd_comb = list(itertools.product(target_agents, target_envs, target_datasets, target_distributions))
@@ -108,7 +108,10 @@ def add_seed_scripts(sweep_params, target_agents, target_envs, target_datasets, 
         kwargs[" --distribution "] = dist
         kwargs.update(DEFAULT_ENV[env])
 
-        default_params = agent_parameters["{}-{}-{}".format(env, dataset, dist)][agent]
+        if agent == "FTT":
+            default_params = agent_parameters[ftt_key]["{}-{}-{}".format(env, dataset, dist)][agent]
+        else:
+            default_params = agent_parameters["{}-{}-{}".format(env, dataset, dist)][agent]
         settings = {**sweep_params, **default_params}
 
         keys, values = zip(*settings.items())
@@ -120,7 +123,8 @@ def add_seed_scripts(sweep_params, target_agents, target_envs, target_datasets, 
             for run in list(range(run_base, run_base+num_runs)):
                 kwargs[" --seed "] = run
                 cmds.append(generate_cmd(kwargs))
-    write_to_file(cmds, prev_file=prev_file, line_per_file=line_per_file)
+    prev_file = write_to_file(cmds, prev_file=prev_file, line_per_file=line_per_file)
+    return prev_file
 
 def add_param_scripts(sweep_params, target_agents, target_envs, target_datasets, target_distributions, num_runs=5, run_base=0, comb_num_base=0, prev_file=0, line_per_file=1):
     def check_repeated(param_comb, default_params):

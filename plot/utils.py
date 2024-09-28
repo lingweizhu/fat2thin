@@ -10,6 +10,9 @@ import matplotlib.patches as mpatches
 CIparam = 1
 
 
+formal_env_name = {
+    'SimEnv3': 'Synthetic Environment',
+}
 formal_dataset_name = {
     'medexp': 'Medium-Expert',
     'medium': 'Medium',
@@ -248,20 +251,51 @@ def choose_param(params_res: np.ndarray, default_sample=5):
     best = max(aucs, key=aucs.get)
     return best
 
-def draw_curve(ax, res:dict, smooth_window:int, colors:dict, styles:dict, CIparam=CIparam):
+def draw_curve(ax, res:dict, smooth_window:int, colors:dict, styles:dict, CIparam=CIparam, highlight=False):
     for lb in res.keys():
         res[lb] = window_smoothing(res[lb], smooth_window)
+
+    if highlight:
+        perf_rankings = []
+        agents = []
+        for lb in res.keys():
+            if lb != highlight:
+                agents.append(lb)
+                perf_rankings.append(np.mean(res[lb], axis=0)[-1])
+        best_base = agents[np.asarray(perf_rankings).argmax()]
+
+    for lb in res.keys():
+        if highlight and (lb == highlight or lb == best_base):
+            alpha_weight = 1.
+        elif highlight and (lb != highlight and lb != best_base):
+            alpha_weight = 0.2
+        else:
+            alpha_weight = 1.
+
         mu = np.mean(res[lb], axis=0)
         err = np.std(res[lb], axis=0) / np.sqrt(res[lb].shape[0]) * CIparam
         if lb in colors:
-            ax.plot(mu, label=lb, color=colors[lb], linestyle=styles.get(lb, '-'))
-            ax.fill_between(np.arange(len(mu)), mu + err, y2=mu - err, alpha=0.3, color=colors[lb])
+            ax.plot(mu, label=lb, color=colors[lb], linestyle=styles.get(lb, '-'), alpha=alpha_weight)
+            ax.fill_between(np.arange(len(mu)), mu + err, y2=mu - err, alpha=0.3*alpha_weight, color=colors[lb])
         else:
-            ax.plot(mu, label=lb)
-            ax.fill_between(np.arange(len(mu)), mu + err, y2=mu - err, alpha=0.3)
+            ax.plot(mu, label=lb, alpha=alpha_weight)
+            ax.fill_between(np.arange(len(mu)), mu + err, y2=mu - err, alpha=0.3*alpha_weight)
     return ax
 
-def learning_curve(ax, pths, smoothing, colors, styles, file="evaluations.npy"):
+def load_final_perf(pths, smoothing, file="evaluations.npy"):
+    res = {}
+    for l, pth in pths.items():
+        params_res = load_exp_setting(pth, file, param_sweep=True)
+        if len(params_res) > 0:
+            best_param = choose_param(params_res)
+            # print("Best param in {}: {}".format(pth, best_param))
+            # res[l] = params_res[best_param]
+            bpth = os.path.join(pth, best_param)
+            res[l] = load_param_setting(bpth, file, param_sweep=False)
+            res[l] = window_smoothing(res[l], smoothing).mean(axis=0)[-1]
+    return res
+
+def learning_curve(ax, pths, smoothing, colors, styles, file="evaluations.npy", highlight=False):
     res = {}
     for l, pth in pths.items():
         params_res = load_exp_setting(pth, file, param_sweep=True)
@@ -272,7 +306,7 @@ def learning_curve(ax, pths, smoothing, colors, styles, file="evaluations.npy"):
             bpth = os.path.join(pth, best_param)
             res[l] = load_param_setting(bpth, file, param_sweep=False)
 
-    ax = draw_curve(ax, res, smoothing, colors, styles)
+    ax = draw_curve(ax, res, smoothing, colors, styles, highlight=highlight)
     return ax
 
 def learning_curve_sweep(ax, pth, smoothing, file="evaluations.npy", key_params=[]):

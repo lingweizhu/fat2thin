@@ -11,12 +11,16 @@ def extract_best_param():
     from configs.default import DEFAULT_AGENT
 
     # D4RL
+    # envs = ["SimEnv3"]
+    # datasets = ["random"]
     envs = ["HalfCheetah", "Hopper", "Walker2d"]
     datasets = ["medexp", "medium", "medrep"]
 
     agents = ["FTT"]
     distributions = ["qGaussian"]
-    pth_base = "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/{}/{}/"
+    # pth_base = "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/{}/{}/"
+    # pth_base = "../data/output/test_v1/test_FTT/proposal_SG_actor_qG_actorloss_KL/{}/{}/{}/{}/"
+    pth_base = "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_SPOT/{}/{}/{}/{}/"
 
     # agents = ["IQL", "TAWAC"]
     # distributions = ["SGaussian"]
@@ -62,6 +66,7 @@ def extract_best_param():
             values = load_parameter(cfg, ['pi_lr', 'tau', 'expectile'])
             write_json[k][a][' --param '] = [p_idx]
             write_json[k][a][' --pi_lr '] = [float(values['pi_lr'])]
+            write_json[k][a][' --tau '] = [float(values['tau'])]
             if a == "TAWAC" and d == "medium":
                 write_json[k][a][' --tau '] = [float(values['tau'])]
 
