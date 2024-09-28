@@ -82,17 +82,17 @@ class SquashedGaussian(nn.Module):
             std = std[:, dim: dim + 1]
             dist = torch.distributions.Normal(mean, std)
 
-        def log_prob(action):
-            tanhout = action
-            out = torch.atanh(torch.clamp(tanhout, -1.0 + self.epsilon, 1.0 - self.epsilon))
-            logp = dist.log_prob(out)
-            logp -= torch.log((1 - tanhout.pow(2)) + self.epsilon).sum(axis=-1).reshape(logp.shape)
-            logp = logp.view(-1, 1)
-            return logp
+        # def log_prob(action):
+        #     tanhout = action
+        #     out = torch.atanh(torch.clamp(tanhout, -1.0 + self.epsilon, 1.0 - self.epsilon))
+        #     logp = dist.log_prob(out)
+        #     logp = logp.view(-1, 1)
+        #     return logp
+        # dist_obj = types.SimpleNamespace()
+        # dist_obj.log_prob = log_prob
+        # return dist_obj, mean, std, None
 
-        dist_obj = types.SimpleNamespace()
-        dist_obj.log_prob = log_prob
-        return dist_obj, mean, std, None
+        return dist, mean, std, None
 
 
 class Gaussian(SquashedGaussian):

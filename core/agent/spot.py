@@ -135,7 +135,7 @@ class VAE(nn.Module):
 
 
 class SPOT(base.ActorCritic):
-    def __init__(self, cfg):
+    def __init__(self, cfg, train_vae=True):
         super(SPOT, self).__init__(cfg)
 
         self.num_samples = 1
@@ -145,7 +145,8 @@ class SPOT(base.ActorCritic):
         self.vae = VAE(cfg.state_dim, cfg.action_dim, cfg.action_dim*2, 1., hidden_dim=cfg.hidden_units)
         self.vae_optimizer = torch.optim.Adam(self.vae.parameters(), lr=1e-3, weight_decay=0.)
         self.n_iter = 1e5
-        self.vae_train(int(self.n_iter))
+        if train_vae:
+            self.vae_train(int(self.n_iter))
 
     def vae_train(self, n_iter):
         for i in range(n_iter):
