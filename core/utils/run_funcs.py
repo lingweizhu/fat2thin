@@ -123,7 +123,7 @@ def run_steps(agent, max_steps, log_interval, eval_pth):
             evaluations.append(mean)
             t0 = time.time()
         if max_steps and agent.total_steps >= max_steps:
-            agent.save(timestamp="_{}".format(agent.total_steps))
+            # agent.save(timestamp="_{}".format(agent.total_steps))
             break
         agent.step()
     # agent.save(timestamp="_{}".format(agent.total_steps))
@@ -237,7 +237,7 @@ def policy_evolution(cfg, agent, num_samples=500):
         # plt.show()
 
 def policy_evolution_multipolicy(cfg, agent_objs, time_color, num_samples=500, alpha=0.8, show_proposal=True):
-    from plot.utils import formal_distribution_name, formal_dataset_name, formal_env_name
+    from plot.utils import formal_distribution_name, formal_dataset_name, formal_env_name, formal_agent_name
     # if cfg.env_name == "SimEnv3" and cfg.log_interval == cfg.max_steps:
     if cfg.log_interval == cfg.max_steps:
         final_policy_samples(cfg, agent_objs, time_color, num_samples, alpha, show_proposal)
@@ -291,12 +291,12 @@ def policy_evolution_multipolicy(cfg, agent_objs, time_color, num_samples=500, a
                 if show_proposal:
                     ys1 = np.asarray(plot_ys["{} Actor".format(agent.cfg.agent)][idx])
                     ys2 = np.asarray(plot_ys["{} Proposal".format(agent.cfg.agent)][idx])
-                    # max_y = np.concatenate([ys1, ys2]).max()
+                    max_y = np.concatenate([ys1, ys2]).max()
                     min_y = np.concatenate([ys1, ys2]).min()
-                    # ys1 = (ys1 - min_y) / (max_y - min_y)
-                    # ys2 = (ys2 - min_y) / (max_y - min_y)
-                    ys1 = (ys1 - ys1.min()) / (ys1.max() - ys1.min())
-                    ys2 = (ys2 - ys2.min()) / (ys2.max() - ys2.min())
+                    ys1 = (ys1 - min_y) / (max_y - min_y)
+                    ys2 = (ys2 - min_y) / (max_y - min_y)
+                    # ys1 = (ys1 - ys1.min()) / (ys1.max() - ys1.min())
+                    # ys2 = (ys2 - ys2.min()) / (ys2.max() - ys2.min())
                     ax.plot(xs.flatten(), ys1, zs=idx, zdir='y', color=time_color["{} Actor".format(agent.cfg.agent)][idx], alpha=alpha*alpha_weight, zorder=len(timestamps)-idx)
                     ax.plot(xs.flatten(), ys2, zs=idx, zdir='y', color=time_color["{} Proposal".format(agent.cfg.agent)][idx], alpha=alpha*alpha_weight, zorder=len(timestamps)-idx)
                 else:
@@ -310,22 +310,22 @@ def policy_evolution_multipolicy(cfg, agent_objs, time_color, num_samples=500, a
         for agent in agent_objs:
             alpha_weight = 1. if agent.cfg.agent == "FTT" else 0.5
             if show_proposal:
-                label = "{} Actor".format(agent.cfg.agent)
+                label = "{} Actor".format(formal_agent_name.get(agent.cfg.agent, agent.cfg.agent))
                 ax.plot([], [], color=time_color["{} Actor".format(agent.cfg.agent)][idx],
                         linestyle='-',
                         label=label, alpha=alpha*alpha_weight)
-                label = "{} Proposal".format(agent.cfg.agent)
+                label = "{} Proposal".format(formal_agent_name.get(agent.cfg.agent, agent.cfg.agent))
                 ax.plot([], [], color=time_color["{} Proposal".format(agent.cfg.agent)][idx],
                         linestyle='-',
                         label=label, alpha=alpha*alpha_weight)
-                subtitle = "FtT Proposal and Actor"
+                subtitle = "FtTPO Proposal and Actor"
             else:
                 # label = "{} {}".format(agent.cfg.agent, formal_distribution_name[agent.cfg.distribution])
-                label = "{}".format(agent.cfg.agent)
+                label = "{}".format(formal_agent_name.get(agent.cfg.agent, agent.cfg.agent))
                 ax.plot([], [],
                         color=time_color["{} {}".format(agent.cfg.agent, agent.cfg.distribution)][idx], linestyle='-',
                         label=label, alpha=alpha*alpha_weight)
-                subtitle = "FtT Actor and Baselines"
+                subtitle = "FtTPO Actor and Baselines"
 
         trail = "st" if i == 0 else "nd" if i == 1 else "rd" if i == 2 else "th"
 
@@ -430,7 +430,7 @@ def final_policy_samples(cfg, agent_objs, time_color, num_samples=50, alpha=0.8,
             ax.set_xlim([0.3, 0.8])
             ax.set_ylim(0, 1.2)
             plt.legend(loc='lower left', bbox_to_anchor=(0, 0.85), prop={'size': 11}, ncol=2, frameon=False)
-            fig.text(0.4, 0.85, "FTT Policy", fontsize=12)
+            fig.text(0.4, 0.85, "FtTPO Policy", fontsize=12)
         else:
             for agent in agent_objs:
                 ax.plot([], [], color=colors[agent.cfg.agent], linestyle='-',

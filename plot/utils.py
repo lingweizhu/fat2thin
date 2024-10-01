@@ -13,6 +13,9 @@ CIparam = 1
 formal_env_name = {
     'SimEnv3': 'Synthetic Environment',
 }
+formal_agent_name = {
+    'FTT': 'FtTPO'
+}
 formal_dataset_name = {
     'medexp': 'Medium-Expert',
     'medium': 'Medium',
@@ -187,8 +190,13 @@ def load_param_setting(pth, file, param_sweep):
         res = load_file(fpth)
         if res is not None:
             seeds_res.append(res)
+    if len(seeds_res) == 0:
+        return np.asarray(seeds_res)
+    min_len = np.min(np.asarray([len(r) for r in seeds_res]))
+    seeds_res = [r[:min_len] for r in seeds_res]
     if not param_sweep and len(seeds_res)<10:
         print("================ Warning on number of seeds ================", pth, len(seeds_res), "\n")
+        # print('"'+pth+'",')
     return np.asarray(seeds_res)
 
 def load_key_param(pth, key_params):

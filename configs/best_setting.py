@@ -1,6 +1,34 @@
 BEST_AGENT = {
 
     "SimEnv3-random-SGaussian": {
+        "SQL": {
+            " --param ": [
+                7
+            ],
+            " --pi_lr ": [
+                0.003
+            ],
+            " --tau ": [
+                5.0
+            ],
+            " --expectile ": [
+                5.0
+            ]
+        },
+        "XQL": {
+            " --param ": [
+                5
+            ],
+            " --pi_lr ": [
+                0.0001
+            ],
+            " --tau ": [
+                5.0
+            ],
+            " --expectile ": [
+                5.0
+            ]
+        },
         "IQL": {
             " --param ": [
                 23
@@ -403,6 +431,34 @@ BEST_AGENT = {
     },
 
     "HalfCheetah-medexp-SGaussian": {
+        "SQL": {
+            " --param ": [
+                1
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                5.0
+            ],
+            " --expectile ": [
+                5.0
+            ]
+        },
+        "XQL": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                2.0
+            ],
+            " --expectile ": [
+                2.0
+            ]
+        },
         "IQL": {
             " --expectile ": [
                 0.7
@@ -703,6 +759,34 @@ BEST_AGENT = {
         }
     },
     "HalfCheetah-medium-SGaussian": {
+        "SQL": {
+            " --param ": [
+                1
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                5.0
+            ],
+            " --expectile ": [
+                5.0
+            ]
+        },
+        "XQL": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                2.0
+            ],
+            " --expectile ": [
+                2.0
+            ]
+        },
         "IQL": {
             " --expectile ": [
                 0.7
@@ -1003,6 +1087,34 @@ BEST_AGENT = {
         }
     },
     "HalfCheetah-medrep-SGaussian": {
+        "SQL": {
+            " --param ": [
+                1
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                5.0
+            ],
+            " --expectile ": [
+                5.0
+            ]
+        },
+        "XQL": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                2.0
+            ],
+            " --expectile ": [
+                2.0
+            ]
+        },
         "IQL": {
             " --expectile ": [
                 0.7
@@ -1303,6 +1415,34 @@ BEST_AGENT = {
         }
     },
     "Hopper-medexp-SGaussian": {
+        "SQL": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                2.0
+            ],
+            " --expectile ": [
+                2.0
+            ]
+        },
+        "XQL": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                2.0
+            ],
+            " --expectile ": [
+                2.0
+            ]
+        },
         "IQL": {
             " --expectile ": [
                 0.7
@@ -1603,6 +1743,34 @@ BEST_AGENT = {
         }
     },
     "Hopper-medium-SGaussian": {
+        "SQL": {
+            " --param ": [
+                1
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                5.0
+            ],
+            " --expectile ": [
+                5.0
+            ]
+        },
+        "XQL": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                2.0
+            ],
+            " --expectile ": [
+                2.0
+            ]
+        },
         "IQL": {
             " --expectile ": [
                 0.7
@@ -1903,6 +2071,34 @@ BEST_AGENT = {
         }
     },
     "Hopper-medrep-SGaussian": {
+        "SQL": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                2.0
+            ],
+            " --expectile ": [
+                2.0
+            ]
+        },
+        "XQL": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                2.0
+            ],
+            " --expectile ": [
+                2.0
+            ]
+        },
         "IQL": {
             " --expectile ": [
                 0.7
@@ -2203,6 +2399,34 @@ BEST_AGENT = {
         }
     },
     "Walker2d-medexp-SGaussian": {
+        "SQL": {
+            " --param ": [
+                1
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                5.0
+            ],
+            " --expectile ": [
+                5.0
+            ]
+        },
+        "XQL": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                2.0
+            ],
+            " --expectile ": [
+                2.0
+            ]
+        },
         "IQL": {
             " --expectile ": [
                 0.7
@@ -2503,6 +2727,34 @@ BEST_AGENT = {
         }
     },
     "Walker2d-medium-SGaussian": {
+        "SQL": {
+            " --param ": [
+                1
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                5.0
+            ],
+            " --expectile ": [
+                5.0
+            ]
+        },
+        "XQL": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                2.0
+            ],
+            " --expectile ": [
+                2.0
+            ]
+        },
         "IQL": {
             " --expectile ": [
                 0.7
@@ -2803,6 +3055,34 @@ BEST_AGENT = {
         }
     },
     "Walker2d-medrep-SGaussian": {
+        "SQL": {
+            " --param ": [
+                1
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                5.0
+            ],
+            " --expectile ": [
+                5.0
+            ]
+        },
+        "XQL": {
+            " --param ": [
+                0
+            ],
+            " --pi_lr ": [
+                0.0002
+            ],
+            " --tau ": [
+                2.0
+            ],
+            " --expectile ": [
+                2.0
+            ]
+        },
         "IQL": {
             " --expectile ": [
                 0.7

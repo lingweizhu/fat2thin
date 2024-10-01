@@ -43,13 +43,13 @@ def projection_baseline():
     # datasets = ["medexp", "medium"]
     datasets = ["medexp"]
     pths = {
-        "FtT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
+        "FtTPO": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
         "ReverseKL": "../data/output/test_v0/naive_projection_baselines/{}/{}/TAWACqG/qGaussian/",
         "RAR": "../data/output/test_v0/naive_projection_baselines/{}/{}/TAWACqGC/qGaussian/",
         # "SPOT": "../data/output/test_v1/baseline/{}/{}/SPOT/SGaussian/",
     }
     colors = {
-        "FtT": color_default[0],
+        "FtTPO": color_default[0],
         "ReverseKL": color_default[1],
         "RAR": color_default[2]
     }
@@ -69,7 +69,7 @@ def projection_baseline():
     fontsize = 11
     fig.supxlabel(r'Step $(\times 10^4)$', y=0, verticalalignment='bottom', fontsize=fontsize) # discrete 10^3, continuous 10^4
     fig.supylabel('Score', x=0.02, y=0.4, verticalalignment='bottom', fontsize=fontsize)
-    fig.text(0.77, 0.61, "FtT", fontsize=fontsize, color=colors["FtT"])
+    fig.text(0.7, 0.61, "FtTPO", fontsize=fontsize, color=colors["FtTPO"])
     fig.text(0.6, 0.25, "ReverseKL", fontsize=fontsize, color=colors["ReverseKL"])
     fig.text(0.77, 0.46, "RAR", fontsize=fontsize, color=colors["RAR"])
 
@@ -87,7 +87,7 @@ def main_results():
     envs = ["HalfCheetah", "Hopper", "Walker2d"]
     datasets = ["medexp", "medrep", "medium"]
     pths = {
-        "FTT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
+        "FtTPO": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
         # "FTT-SG": "../data/output/test_v1/test_FTT/proposal_SG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
         # "FTT-SPOT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_SPOT/{}/{}/FTT/qGaussian/",
         # "IQL-HTqG": "../data/baseline_data/output/test_v1/{}/{}/IQL/HTqGaussian/",
@@ -102,9 +102,9 @@ def main_results():
         # "SPOT": "../data/output/test_v1/baseline/{}/{}/SPOT/SGaussian/",
     }
     colors = {
-        "FTT": color_default[0],
-        "FTT-SG": 'black',
-        "FTT-SPOT": 'black',
+        "FtTPO": color_default[0],
+        "FtTPO-SG": 'black',
+        "FtTPO-SPOT": 'black',
         "IQL": color_default[1],
         "InAC": color_default[2],
         "TAWAC": color_default[3],
@@ -116,7 +116,7 @@ def main_results():
     fig, axs = plt.subplots(len(envs), len(datasets),
                             figsize=(2.8 * len(datasets), 2 * len(envs)))
     # axs = np.asarray([[axs]])
-    axs, handle_list, label_list = formated_learning_curve(axs, pths, envs, datasets, colors, highlight="FTT")
+    axs, handle_list, label_list = formated_learning_curve(axs, pths, envs, datasets, colors, highlight="FtTPO")
     hc_y = [0, 0.5, 1]
     for row in range(len(envs)):
         axs[row, 0].set_yticks(hc_y)
@@ -143,7 +143,7 @@ def simulation_exp():
     envs = ["SimEnv3"]
     datasets = ["random"]
     pths = {
-        "FTT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
+        "FtTPO": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
         # "FTT-SG": "../data/output/test_v1/test_FTT/proposal_SG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
         "IQL": "../data/output/test_v1/baseline/{}/{}/IQL/SGaussian/",
         "XQL": "../data/output/test_v1/baseline/{}/{}/XQL/SGaussian/",
@@ -152,7 +152,7 @@ def simulation_exp():
         # "TAWAC": "../data/output/test_v1/baseline/{}/{}/TAWAC/SGaussian/",
     }
     colors = {
-        "FTT": color_default[0],
+        "FtTPO": color_default[0],
         "IQL": color_default[1],
         "XQL": color_default[2],
         "SQL": color_default[3],
@@ -178,14 +178,14 @@ def spot():
     envs = ["HalfCheetah", "Hopper", "Walker2d"]
     datasets = ["medexp", "medrep", "medium"]
     pths = {
-        "FTT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
-        "FTT-SPOT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_SPOT/{}/{}/FTT/qGaussian/",
-        "FTT-SG": "../data/output/test_v1/test_FTT/proposal_SG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
+        "FtTPO": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
+        "FtTPO-SPOT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_SPOT/{}/{}/FTT/qGaussian/",
+        "FtTPO-SG": "../data/output/test_v1/test_FTT/proposal_SG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
     }
     colors = {
-        "FTT": color_default[0],
-        "FTT-SPOT": color_default[1],
-        "FTT-SG": color_default[2],
+        "FtTPO": color_default[0],
+        "FtTPO-SPOT": color_default[1],
+        "FtTPO-SG": color_default[2],
     }
     fig, axs = plt.subplots(len(envs), len(datasets),
                             figsize=(2.8 * len(datasets), 2 * len(envs)))
@@ -214,13 +214,13 @@ def spot():
 
 def tawac_htqg():
     pths = {
-        "FTT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
+        "FtTPO": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
         # "FTT-SPOT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_SPOT/{}/{}/FTT/qGaussian/",
         "TAWAC-HT": "../data/baseline_data/output/test_v1/{}/{}/TAWAC/HTqGaussian/",
         # "InAC-HT": "../data/baseline_data/output/test_v1/{}/{}/InAC/HTqGaussian/",
     }
     colors = {
-        "FTT": color_default[0],
+        "FtTPO": color_default[0],
         # "FTT-SPOT": color_default[2],
         "TAWAC-HT": color_default[1],
         "InAC-HT": color_default[3],
@@ -291,21 +291,21 @@ def final_perf_bar(ax, pths, envs, datasets, colors, baseline):
 
 def ablation():
     pths = {
-        "FTT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
-        "FTT-SG": "../data/output/test_v1/test_FTT/proposal_SG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
-        "FTT-SPOT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_SPOT/{}/{}/FTT/qGaussian/",
+        "FtTPO": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
+        "FtTPO-SG": "../data/output/test_v1/test_FTT/proposal_SG_actor_qG_actorloss_KL/{}/{}/FTT/qGaussian/",
+        "FtTPO-SPOT": "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_SPOT/{}/{}/FTT/qGaussian/",
         "TAWAC-HT": "../data/baseline_data/output/test_v1/{}/{}/TAWAC/HTqGaussian/",
     }
     colors = {
-        "FTT-SPOT": color_default[0],
+        "FtTPO-SPOT": color_default[0],
         "TAWAC-HT": color_default[1],
-        "FTT-SG": color_default[2],
+        "FtTPO-SG": color_default[2],
     }
     envs = ["HalfCheetah", "Hopper", "Walker2d"]
     datasets = ["medexp", "medrep", "medium"]
     fig, ax = plt.subplots(1, 1, figsize=(0.5*len(datasets)*len(envs)+2, 2.5))
-    ax = final_perf_bar(ax, pths, envs, datasets, colors, baseline="FTT")
-    ax.set_ylabel('Final Performance\nPropotional to FtT '+r'$(\%)$')
+    ax = final_perf_bar(ax, pths, envs, datasets, colors, baseline="FtTPO")
+    ax.set_ylabel('Final Performance\nPropotional to FtTPO '+r'$(\%)$')
 
     ys = [0.6, 0.8, 1.0, 1.2]
     ax.set_yticks(ys)
@@ -319,9 +319,9 @@ def ablation():
 
 
 if __name__ == "__main__":
-    # projection_baseline()
-    # main_results()
-    # simulation_exp()
-    # ablation()
+    projection_baseline()
+    main_results()
+    simulation_exp()
+    ablation()
     spot()
-    # tawac_htqg()
+    tawac_htqg()

@@ -11,16 +11,16 @@ def extract_best_param():
     from configs.default import DEFAULT_AGENT
 
     # D4RL
-    # envs = ["SimEnv3"]
-    # datasets = ["random"]
-    envs = ["HalfCheetah", "Hopper", "Walker2d"]
-    datasets = ["medexp", "medium", "medrep"]
+    envs = ["SimEnv3"]
+    datasets = ["random"]
+    # envs = ["HalfCheetah", "Hopper", "Walker2d"]
+    # datasets = ["medexp", "medium", "medrep"]
 
-    agents = ["FTT"]
-    distributions = ["qGaussian"]
-    # pth_base = "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/{}/{}/"
-    # pth_base = "../data/output/test_v1/test_FTT/proposal_SG_actor_qG_actorloss_KL/{}/{}/{}/{}/"
-    pth_base = "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_SPOT/{}/{}/{}/{}/"
+    # agents = ["FTT"]
+    # distributions = ["qGaussian"]
+    # # pth_base = "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/{}/{}/{}/{}/"
+    # # pth_base = "../data/output/test_v1/test_FTT/proposal_SG_actor_qG_actorloss_KL/{}/{}/{}/{}/"
+    # pth_base = "../data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_SPOT/{}/{}/{}/{}/"
 
     # agents = ["IQL", "TAWAC"]
     # distributions = ["SGaussian"]
@@ -41,6 +41,10 @@ def extract_best_param():
     # agents = ["IQL", "TAWAC"]
     # distributions = ["SGaussian"]
     # pth_base = "../data/output/test_v1/baseline/{}/{}/{}/{}/"
+
+    agents = ["SQL", "XQL"]
+    distributions = ["SGaussian"]
+    pth_base = "../data/output/test_v1/baseline/{}/{}/{}/{}/"
 
     combs = list(itertools.product(envs, datasets, agents, distributions))
     write_json = {}
@@ -67,6 +71,7 @@ def extract_best_param():
             write_json[k][a][' --param '] = [p_idx]
             write_json[k][a][' --pi_lr '] = [float(values['pi_lr'])]
             write_json[k][a][' --tau '] = [float(values['tau'])]
+            write_json[k][a][' --expectile '] = [float(values['tau'])]
             if a == "TAWAC" and d == "medium":
                 write_json[k][a][' --tau '] = [float(values['tau'])]
 
