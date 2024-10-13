@@ -11,7 +11,7 @@ plt.rcParams.update({
     "font.sans-serif": "Helvetica",
 })
 
-color_default = ["#0050E6", "#f57600", "#AD3131", "#B68961", "#009eb0", "#A9B388", "#D8ABAB"]
+color_default = ["#0050E6", "#f57600", "#AD3131", "#9C6D3E", "#009eb0", "#698E00", "#F56FA1"] #"#A9B388", "#D8ABAB"]
 dataset_name = {
     "medexp": "Medium-Expert",
     "medrep": "Medium-Replay",
