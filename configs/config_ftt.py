@@ -262,32 +262,37 @@ def c20240829():
     }
     sweep[" --info "] = ["policy_evolution/"]
 
-    target_agents = ["FTT"]
-    target_distributions = ["qGaussian"]
-    prev_file = add_seed_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, defined_param=BEST_AGENT, ftt_key="HTqG-KL",
-                                 num_runs=1, run_base=0, comb_num_base=0, prev_file=prev_file, line_per_file=1)
-
-    target_agents = ["IQL"]
-    sweep[" --distribution "] = ["SGaussian"]
-    target_distributions = ["SGaussian"]
-    prev_file = add_seed_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, defined_param=BEST_AGENT,
-                                 num_runs=1, run_base=0, comb_num_base=0, prev_file=prev_file, line_per_file=1)
-
-    target_agents = ["XQL"]
-    target_distributions = ["SGaussian"]
-    prev_file = add_seed_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, defined_param=BEST_AGENT,
-                                 num_runs=1, run_base=0, comb_num_base=0, prev_file=prev_file, line_per_file=1)
-
-    target_agents = ["SQL"]
-    target_distributions = ["SGaussian"]
-    prev_file = add_seed_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, defined_param=BEST_AGENT,
-                                 num_runs=1, run_base=0, comb_num_base=0, prev_file=prev_file, line_per_file=1)
-
-    # target_agents = ["SPOT"]
+    # target_agents = ["FTT"]
+    # target_distributions = ["qGaussian"]
+    # prev_file = add_seed_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, defined_param=BEST_AGENT, ftt_key="HTqG-KL",
+    #                              num_runs=1, run_base=0, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+    #
+    # target_agents = ["IQL"]
+    # sweep[" --distribution "] = ["SGaussian"]
     # target_distributions = ["SGaussian"]
     # prev_file = add_seed_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, defined_param=BEST_AGENT,
     #                              num_runs=1, run_base=0, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+    #
+    # target_agents = ["XQL"]
+    # target_distributions = ["SGaussian"]
+    # prev_file = add_seed_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, defined_param=BEST_AGENT,
+    #                              num_runs=1, run_base=0, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+    #
+    # target_agents = ["SQL"]
+    # target_distributions = ["SGaussian"]
+    # prev_file = add_seed_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, defined_param=BEST_AGENT,
+    #                              num_runs=1, run_base=0, comb_num_base=0, prev_file=prev_file, line_per_file=1)
+    #
+    # # target_agents = ["SPOT"]
+    # # target_distributions = ["SGaussian"]
+    # # prev_file = add_seed_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, defined_param=BEST_AGENT,
+    # #                              num_runs=1, run_base=0, comb_num_base=0, prev_file=prev_file, line_per_file=1)
 
+    target_agents = ["IQL"]
+    sweep[" --distribution "] = ["Gaussian"]
+    target_distributions = ["Gaussian"]
+    prev_file = add_seed_scripts(sweep, target_agents, target_envs, target_datasets, target_distributions, defined_param=BEST_AGENT,
+                                 num_runs=1, run_base=0, comb_num_base=0, prev_file=prev_file, line_per_file=1)
 
 def c20240902():
     # sweep = {
@@ -330,29 +335,56 @@ def c20240902():
     #                          num_runs=1, run_base=0, comb_num_base=0,
     #                          prev_file=1, line_per_file=1)
 
+    # sweep = {
+    #     " --rho ": [0.2],
+    #     " --q_lr_prob ": [1.],
+    #     " --actor_loss ": ["KL"],
+    #     # " --log_interval ": [100],
+    #     # " --max_steps ": [1000],
+    #     " --proposal_distribution ": ["HTqGaussian"],
+    #     " --distribution ": ["qGaussian"],
+    #     " --info ": ["policy_evolution_plot/"]
+    # }
+    # target_envs = ["HalfCheetah"]
+    # target_datasets = ["medexp"]
+    # target_agents = ["FTT"]
+    #
+    # sweep[" --distributions "] = ['qGaussian']
+    # sweep[" --agents "] = ['FTT']
+    # sweep[" --show_proposal "] = [1]
+    # sweep[" --log_interval "] = [1000]
+    # sweep[" --max_steps "] = [5000]
+    # sweep[" --load_network_paths "] = ['data/output/policy_evolution/HalfCheetah/medexp/FTT/qGaussian/0_param/0_run/parameters/ ']
+    # policy_evolution_scripts(sweep, target_agents, target_envs, target_datasets,
+    #                          num_runs=1, run_base=0, comb_num_base=0,
+    #                          prev_file=2, line_per_file=1)
+
     sweep = {
         " --rho ": [0.2],
         " --q_lr_prob ": [1.],
+        " --gamma ": [0.99],
+        " --timeout ": [1000],
         " --actor_loss ": ["KL"],
-        # " --log_interval ": [100],
-        # " --max_steps ": [1000],
+        " --log_interval ": [1000],
+        " --max_steps ": [10000],
         " --proposal_distribution ": ["HTqGaussian"],
-        " --distribution ": ["qGaussian"],
-        " --info ": ["policy_evolution_plot/"]
+        " --info ": ["policy_evolution_plot/"],
     }
-    target_envs = ["HalfCheetah"]
-    target_datasets = ["medexp"]
-    target_agents = ["FTT"]
 
-    sweep[" --distributions "] = ['qGaussian']
-    sweep[" --agents "] = ['FTT']
-    sweep[" --show_proposal "] = [1]
-    sweep[" --log_interval "] = [1000]
-    sweep[" --max_steps "] = [5000]
-    sweep[" --load_network_paths "] = ['data/output/policy_evolution/HalfCheetah/medexp/FTT/qGaussian/0_param/0_run/parameters/ ']
+    target_envs = ['HalfCheetah']
+    target_datasets = ['medexp']
+    target_agents = ['FTT']
+
+    sweep[" --distributions "] = ['qGaussian Gaussian']
+    sweep[" --agents "] = ['FTT IQL']
+    sweep[" --show_proposal "] = [0]
+    # sweep[" --log_interval "] = [1000]
+    # sweep[" --max_steps "] = [5000]
+    sweep[" --load_network_paths "] = ['data/output/policy_evolution/HalfCheetah/medexp/FTT/qGaussian/0_param/0_run/parameters/ '
+                                       'data/output/policy_evolution/HalfCheetah/medexp/IQL/Gaussian/1_param/0_run/parameters/ ']
     policy_evolution_scripts(sweep, target_agents, target_envs, target_datasets,
                              num_runs=1, run_base=0, comb_num_base=0,
-                             prev_file=2, line_per_file=1)
+                             prev_file=1, line_per_file=1)
 
 def c20240903():
     target_agents = ["IQL", "InAC", "TAWAC", "AWAC", "TD3BC"]
@@ -630,6 +662,17 @@ def c20240917():
                              num_runs=1, run_base=0, comb_num_base=0,
                              prev_file=1, line_per_file=1)
 
+    sweep[" --distributions "] = ['qGaussian']
+    sweep[" --agents "] = ['FTT']
+    sweep[" --show_proposal "] = [1]
+    sweep[" --compare_distribution "] = [1]
+    sweep[" --load_network_paths "] = [
+        'data/output/test_v1/test_FTT/proposal_HTqG_actor_qG_actorloss_KL/SimEnv3/random/FTT/qGaussian/3_param/0_run/parameters/ '
+                                       ]
+    policy_evolution_scripts(sweep, target_agents, target_envs, target_datasets,
+                             num_runs=1, run_base=0, comb_num_base=0,
+                             prev_file=2, line_per_file=1)
+
 def c20240918():
     sweep = {
         " --info ": ["final_policy"],
@@ -658,6 +701,7 @@ def c20240921():
     target_envs = ['HalfCheetah']
     target_datasets = ['medexp']
     target_agents = ['FTT']
+
     sweep[" --distributions "] = ['qGaussian SGaussian SGaussian SGaussian']
     sweep[" --agents "] = ['FTT IQL TAWAC InAC']
     sweep[" --load_network_paths "] = ['data/output/final_policy/HalfCheetah/medexp/FTT/qGaussian/0_param/0_run/parameters/ '
@@ -671,6 +715,52 @@ def c20240921():
                              num_runs=1, run_base=0, comb_num_base=0,
                              prev_file=0, line_per_file=1)
 
+    sweep[" --distributions "] = ['qGaussian']
+    sweep[" --agents "] = ['FTT']
+    sweep[" --show_proposal "] = [1]
+    sweep[" --load_network_paths "] = ['data/output/final_policy/HalfCheetah/medexp/FTT/qGaussian/0_param/0_run/parameters/ ']
+    policy_evolution_scripts(sweep, target_agents, target_envs, target_datasets,
+                             num_runs=1, run_base=0, comb_num_base=0,
+                             prev_file=1, line_per_file=1)
+
+def c20241115():
+    target_envs = ["HalfCheetah", "Hopper"]
+    target_datasets = ["medexp"]
+    prev_file = 0
+
+    sweep = {
+        " --exp_type ": ['time'],
+        " --rho ": [0.2],
+        " --q_lr_prob ": [1.],
+        " --actor_loss ": ["KL"],
+        " --log_interval ": [100000],
+        " --max_steps ": [100000],
+        " --proposal_distribution ": ["HTqGaussian"],
+        " --distribution ": ["qGaussian"],
+    }
+    sweep[" --info "] = ["sampling_time/"]
+
+    target_agents = ["IQL"]
+    sweep[" --distribution "] = ["Gaussian"]
+    sweep[" --proposal_distribution "] = ["Gaussian"]
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets,
+                                  num_runs=1, comb_num_base=0, prev_file=prev_file,
+                                  line_per_file=1)
+
+    target_agents = ["IQL"]
+    sweep[" --distribution "] = ["HTqGaussian"]
+    sweep[" --proposal_distribution "] = ["HTqGaussian"]
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets,
+                                  num_runs=1, comb_num_base=0, prev_file=prev_file,
+                                  line_per_file=1)
+
+    target_agents = ["IQL"]
+    sweep[" --distribution "] = ["qGaussian"]
+    sweep[" --proposal_distribution "] = ["qGaussian"]
+    prev_file = write_job_scripts(sweep, target_agents, target_envs, target_datasets,
+                                  num_runs=1, comb_num_base=0, prev_file=prev_file,
+                                  line_per_file=1)
+
 
 if __name__ == "__main__":
     # c20240906() # main results
@@ -681,3 +771,4 @@ if __name__ == "__main__":
     # c20240917() # simEnv3 final policy plot
     # c20240918() # D4RL save final policy
     # c20240921() # D4RL final policy plot
+    # c20241115() # network sampling time`

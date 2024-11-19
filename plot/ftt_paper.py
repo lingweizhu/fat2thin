@@ -317,11 +317,29 @@ def ablation():
     fig.tight_layout()
     plt.savefig("img/ablation.pdf", dpi=300)
 
+def vis_clipped_distirbution():
+    import torch
+    normal = torch.distributions.Normal(0.8, 0.1)
+    xs = np.linspace(0, 1.5, 200)
+    xs_tensor = torch.tensor(xs.reshape(-1, 1))
+    density = torch.exp(normal.log_prob(xs_tensor)).detach().cpu().numpy().reshape(-1)
+    fig, ax = plt.subplots(1, 1, figsize=(4, 4))
+    accum_idx = np.where(xs>1)[0]
+    copy_idx = np.where(xs<=1)[0]
+    clipped_density = np.zeros(len(density))
+    clipped_density[copy_idx] = density[copy_idx]
+    clipped_density[copy_idx[-1]] = density[accum_idx].sum()
+    ax.bar(xs, density, width = xs[1]-xs[0], alpha=1)
+    ax.bar(xs, clipped_density, width = xs[1]-xs[0], alpha=1)
+    ax.set_yticks([], [])
+    ax.spines[['right', 'top', 'left']].set_visible(False)
+    plt.savefig("img/vis_clipped_gaussian.png", dpi=300)
 
 if __name__ == "__main__":
-    projection_baseline()
-    main_results()
-    simulation_exp()
-    ablation()
-    spot()
-    tawac_htqg()
+    # projection_baseline()
+    # main_results()
+    # simulation_exp()
+    # ablation()
+    # spot()
+    # tawac_htqg()
+    vis_clipped_distirbution()

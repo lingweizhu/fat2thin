@@ -98,11 +98,15 @@ class SquashedGaussian(nn.Module):
 class Gaussian(SquashedGaussian):
     def __init__(self, device, observation_dim, action_dim, arch, action_min, action_max):
         super(Gaussian, self).__init__(device, observation_dim, action_dim, arch, action_min, action_max)
-
+        action_max = np.ones(action_dim) * (action_max - 1e-6)
+        action_min = np.ones(action_dim) * (action_min + 1e-6)
+        self.action_max = torch.FloatTensor(action_max)
+        self.action_min = torch.FloatTensor(action_min)
 
     def rsample(self, observation):
         normal = self.forward(observation)
         out = normal.rsample()
+        out = torch.clamp(out, self.action_min, self.action_max)
         logp = normal.log_prob(out)
         logp = logp.view((logp.shape[0], 1))
         return out, logp
@@ -110,6 +114,7 @@ class Gaussian(SquashedGaussian):
     def sample(self, observation, deterministic=False):
         normal = self.forward(observation)
         out = normal.sample()
+        out = torch.clamp(out, self.action_min, self.action_max)
         with torch.no_grad():
             logp = normal.log_prob(out)
         logp = logp.view((logp.shape[0], 1))
@@ -117,6 +122,7 @@ class Gaussian(SquashedGaussian):
 
     def log_prob(self, observation, action):
         normal = self.forward(observation)
+        action = torch.clamp(action, self.action_min, self.action_max)
         out = action
         logp = normal.log_prob(out)
         logp = logp.view(-1, 1)

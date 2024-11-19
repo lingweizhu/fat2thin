@@ -50,6 +50,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="run_file")
 
     parser.add_argument('--show_proposal', default=0, type=int)
+    parser.add_argument('--compare_distribution', default=0, type=int)
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--param', default=0, type=int)
     parser.add_argument('--info', default='test_v0', type=str)
@@ -126,6 +127,7 @@ if __name__ == '__main__':
         "FTT Actor": ["#99BDFF", "#4D8BFF", "#1A6AFF", "#0050E6", "#0050E6"],
         "FTT Proposal": ["#F08F8F", "#ED7878", "#E74B4B", "#E01F1F", "#B41818"],
         "IQL SGaussian": ["#F08F8F", "#ED7878", "#E74B4B", "#E01F1F", "#B41818"],
+        "IQL Gaussian": ["#F08F8F", "#ED7878", "#E74B4B", "#E01F1F", "#B41818"],
         "XQL SGaussian": ["#FFC38F", "#FFB26F", "#FFA14F", "#FF902E", "#FF7F0E"],
         "SQL SGaussian": ["#DCAB9A", "#BB8E7E", "#9A7061", "#795345", "#583528"],
         "SPOT SGaussian": ["#85C5F3", "#6CB2E3", "#529ED4", "#398BC4", "#1F77B4"],
@@ -133,4 +135,7 @@ if __name__ == '__main__':
         "AWAC SGaussian": ["#FCA6A6", "#F38687", "#E96767", "#E04748", "#D62728"],
     }
 
-    run_funcs.policy_evolution_multipolicy(cfg, agent_objs, time_color, show_proposal=cfg.show_proposal)
+    if cfg.compare_distribution:
+        run_funcs.compare_ftt_distribution(cfg, agent_objs, time_color, show_proposal=cfg.show_proposal)
+    else:
+        run_funcs.policy_evolution_multipolicy(cfg, agent_objs, time_color, show_proposal=cfg.show_proposal)

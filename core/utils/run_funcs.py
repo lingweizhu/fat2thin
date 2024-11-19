@@ -118,7 +118,7 @@ def run_steps(agent, max_steps, log_interval, eval_pth):
     agent.populate_returns(initialize=True)
     while True:
         if log_interval and not agent.total_steps % log_interval:
-            # agent.save(timestamp="_{}".format(agent.total_steps))
+            agent.save(timestamp="_{}".format(agent.total_steps))
             mean, median, min_, max_ = agent.log_file(elapsed_time=log_interval / (time.time() - t0), test=True)
             evaluations.append(mean)
             t0 = time.time()
@@ -128,6 +128,16 @@ def run_steps(agent, max_steps, log_interval, eval_pth):
         agent.step()
     # agent.save(timestamp="_{}".format(agent.total_steps))
     np.save(eval_pth+"/evaluations.npy", np.array(evaluations))
+    
+def timing(agent, max_steps):
+    agent.populate_returns(initialize=True)
+    state = agent.eval_env.reset()
+    t0 = time.time()
+    for step in range(max_steps):
+        action = agent.eval_step(state)
+    t1 = time.time()
+    agent.logger.info("Sampling {} times took {} seconds".format(max_steps, t1-t0))
+
 
 def policy_evolution(cfg, agent, num_samples=500):
     from plot.plot_v0 import formal_distribution_name
@@ -255,7 +265,10 @@ def policy_evolution_multipolicy(cfg, agent_objs, time_color, num_samples=500, a
         #     xs = np.linspace(-1, 1, num=num_samples).reshape((num_samples, 1))
         #     xticks = [-1, -0.5, 0, 0.5, 1]
         # else:
-        xs = np.linspace(-2, 2, num=num_samples).reshape((num_samples, 1))
+        xs = np.linspace(-2.2, 2.2, num=num_samples).reshape((num_samples, 1))
+        small_accum_idx = np.where(xs<-2)[0]
+        large_accum_idx = np.where(xs>2)[0]
+        keep_idx = np.where(np.logical_or(xs>=-2, xs<=2))[0]
         xticks = [-2, -1, 0, 1, 2]
         actions = np.concatenate([zeros0, xs, zeros1], axis=1)
         actions = torch_utils.tensor(actions, agent_objs[0].device)
@@ -274,11 +287,17 @@ def policy_evolution_multipolicy(cfg, agent_objs, time_color, num_samples=500, a
                 agent.load(agent.cfg.load_network, "_{}".format(int(timestamp)))
                 with torch.no_grad():
                     dist, mean, shape, dfx = agent.ac.pi.distribution(state, dim=i)
-                    density = torch.exp(dist.log_prob(actions[:, i:i+1])).detach().cpu().numpy()
+                    density_all = torch.exp(dist.log_prob(actions[:, i:i+1])).detach().cpu().numpy()
+                    density = density_all[keep_idx]
+                    density[0] = density_all[small_accum_idx].sum()
+                    density[-1] = density_all[large_accum_idx].sum()
                     if show_proposal:
                         dist, mean, shape, dfx = agent.proposal.distribution(state, dim=i)
-                        density2 = torch.exp(
+                        density2_all = torch.exp(
                             dist.log_prob(actions[:, i:i + 1])).detach().cpu().numpy()
+                        density2 = density2_all[keep_idx]
+                        density2[0] = density2_all[small_accum_idx].sum()
+                        density2[-1] = density2_all[large_accum_idx].sum()
                         plot_ys["{} Proposal".format(agent.cfg.agent)].append(density2.flatten())
                         label = "{} Actor".format(agent.cfg.agent)
                     else:
@@ -453,3 +472,136 @@ def final_policy_samples(cfg, agent_objs, time_color, num_samples=50, alpha=0.8,
             plt.savefig(cfg.exp_path + "/vis_final_dim{}_proposal.pdf".format(i), dpi=300)
         else:
             plt.savefig(cfg.exp_path+"/vis_final_dim{}.pdf".format(i), dpi=300)
+
+def compare_ftt_distribution(cfg, agent_objs, time_color, num_samples=50, alpha=0.8, show_proposal=True):
+    import sys
+    sys.path.append("plot/")
+    from plot.ftt_paper import color_default
+    colors = {
+        "FTT": color_default[0],
+        "IQL": color_default[1],
+        "XQL": color_default[2],
+        "SQL": color_default[3],
+        "SPOT": color_default[4],
+    }
+    from plot.utils import formal_distribution_name, formal_dataset_name
+    state = agent_objs[0].env.reset()
+    # for _ in range(3):
+    #     state, _, _, _ = agent_objs[0].env.step([[-0.1]])
+    for _ in range(7):
+        state, _, _, _ = agent_objs[0].env.step([[-0.03]])
+    
+    # for _ in range(10):
+    #     a = np.random.uniform(low=-1, high=1, size=1)
+    #     state, _, done, _ = agent_objs[0].env.step([a])
+    #     assert not done
+    acts = np.linspace(start=-1, stop=1, num=50).reshape(-1, 1)
+    returns = np.zeros(len(acts))
+    for i, a in enumerate(acts):
+        env_copy = copy.deepcopy(agent_objs[0].env)
+        ret = 0
+        # discount = agent_objs[0].gamma
+        s = state
+        # for _ in range(agent_objs[0].timeout):
+        for _ in range(50):
+            s, r, _, _ = env_copy.step([a])
+            ret += r  # * discount
+            # discount *= agent_objs[0].gamma
+            s = torch_utils.tensor(agent_objs[0].state_normalizer(s), agent_objs[0].device)
+            _, a, _, _ = agent_objs[0].ac.pi.distribution(s)  # take mean
+        returns[i] = ret
+    
+    state = state.reshape((1, -1))
+    state = torch_utils.tensor(agent_objs[0].state_normalizer(state), agent_objs[0].device)
+    repeated_state = state.repeat_interleave(num_samples, dim=0)
+    if cfg.env_name == "SimEnv3":
+        x = 1
+    else:
+        x = 1
+    xs = np.linspace(-x, x, num=num_samples).reshape((num_samples, 1))
+    # next_s = [agent_objs[0].env.get_state(agent_objs[0].env.last_mu, agent_objs[0].env.cor, a)[1]
+    #           for a in xs]
+    # rewards = [agent_objs[0].env.get_reward(ns, a)[0] for ns, a in zip(next_s, xs)]
+    for i in range(0, agent_objs[0].action_dim):
+        fig, ax = plt.subplots(1, 1, figsize=(3, 3), dpi=300)
+        ax2 = ax.twinx()
+        ax2.plot(acts.reshape(-1), returns, c='grey', alpha=0.7)
+        ax2.set_ylabel('Performance')
+        ax2.spines['right'].set_color('grey')
+        ax2.tick_params(axis='y', colors='grey')
+        ax2.yaxis.label.set_color('grey')
+        ax2.set_ylim(-5.5, 8)
+        
+        # ax.plot(xs, rewards, c='black')
+        zeros0 = np.zeros((num_samples, i))
+        zeros1 = np.zeros((num_samples, cfg.action_dim - 1 - i))
+        actions = np.concatenate([zeros0, xs, zeros1], axis=1)
+        actions = torch_utils.tensor(actions, agent_objs[0].device)
+        
+        plot_ys = {}
+        plot_ys2 = {}
+        for agent in agent_objs:
+            agent.load(agent.cfg.load_network, "_{}".format(int(cfg.log_interval)))
+            # agent.load(agent.cfg.load_network, "_{}".format(os.listdir(agent.cfg.load_network)[0].split("_")[1]))
+            with torch.no_grad():
+                dist, mean, shape, dfx = agent.ac.pi.distribution(state, dim=i)
+                print("mean, std:", agent.cfg.agent, mean, shape)
+                density = torch.exp(dist.log_prob(actions[:, i:i + 1])).detach().cpu().numpy()
+                if show_proposal:
+                    dist, mean, shape, dfx = agent.proposal.distribution(state, dim=i)
+                    density2 = torch.exp(dist.log_prob(actions[:, i:i + 1])).detach().cpu().numpy()
+                    plot_ys2["{}-{}".format(agent.cfg.agent, agent.cfg.distribution)] = density2.flatten()
+            plot_ys["{}-{}".format(agent.cfg.agent, agent.cfg.distribution)] = density.flatten()
+        
+        for agent in agent_objs:
+            # plot_ys_dist = np.asarray(plot_ys["{}-{}".format(agent.cfg.agent, agent.cfg.distribution)])
+            ys = np.asarray(plot_ys["{}-{}".format(agent.cfg.agent, agent.cfg.distribution)])
+            if cfg.density_normalization:
+                ys = (ys - ys.min()) / (ys.max() - ys.min())
+            # ax.plot(xs.flatten(), ys, color=time_color["{} {}".format(agent.cfg.agent, agent.cfg.distribution)][-1], alpha=alpha)
+            ax.plot(xs.flatten(), ys, color=colors[agent.cfg.agent], alpha=alpha)
+            if show_proposal:
+                ys2 = np.asarray(plot_ys2["{}-{}".format(agent.cfg.agent, agent.cfg.distribution)])
+                ys2 = (ys2 - ys2.min()) / (ys2.max() - ys2.min())
+                ax.plot(xs.flatten(), ys2, color=time_color["{} {}".format(agent.cfg.agent, agent.cfg.distribution)][-1], alpha=alpha, ls="--")
+                ax.fill_between(xs.flatten(), y1=ys, alpha=0.2)
+        if show_proposal:
+            for agent in agent_objs:
+                ax.plot([], [], color=colors[agent.cfg.agent], linestyle='-',
+                        label="Actor".format(agent.cfg.agent), alpha=alpha)
+                ax.plot([], [], color=colors[agent.cfg.agent], linestyle='--',
+                        label="Proposal".format(agent.cfg.agent), alpha=alpha)
+            # ax.set_xlim([0.3, 0.8])
+            ax.set_ylim(0, 1.)
+            ax.set_xlim(-0.3, 0.7)
+            plt.legend(loc='lower left', bbox_to_anchor=(0, 0.85), prop={'size': 11}, ncol=2, frameon=False)
+            fig.text(0.4, 0.85, "FtTPO Policy", fontsize=12)
+
+            ys_actor = np.asarray(plot_ys["{}-{}".format('FTT', agent.cfg.distribution)])
+            ys_proposal = np.asarray(plot_ys2["{}-{}".format('FTT', agent.cfg.distribution)])
+            print(ys_proposal)
+            ax.fill_between(xs.flatten(), 0, 1, where=np.logical_and(ys_actor <= 0, ys_proposal>0),
+                            color='red', alpha=0.1, transform=ax.get_xaxis_transform())
+        else:
+            for agent in agent_objs:
+                ax.plot([], [], color=colors[agent.cfg.agent], linestyle='-',
+                        label="{}".format(agent.cfg.agent), alpha=alpha)
+                # ax.plot([], [], color=time_color["{} {}".format(agent.cfg.agent, agent.cfg.distribution)][-1], linestyle='-',
+                #         label="{}".format(agent.cfg.agent), alpha=alpha)
+                # label="{} {}".format(agent.cfg.agent, formal_distribution_name[agent.cfg.distribution]), alpha=alpha)
+            
+            fig.text(0.4, 0.85, "Final Policy", fontsize=12)
+            ax.set_ylim(0.1, 1.1)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_ylabel(r'Density')
+        ax.set_xlabel(r'Action')
+        plt.subplots_adjust(top=0.8, left=0.2, right=0.8, bottom=0.2)
+        # fig.text(0.22, 0.92, "Final Policy on {} {}".format(cfg.env_name, formal_dataset_name[cfg.dataset]), fontsize=10)
+        # plt.legend(loc='lower left', bbox_to_anchor=(0, 0.98), prop={'size': 8}, ncol=3, frameon=False)
+        # plt.tight_layout()
+        if show_proposal:
+            plt.savefig(cfg.exp_path + "/vis_final_dim{}_proposal.pdf".format(i), dpi=300)
+        else:
+            plt.savefig(cfg.exp_path + "/vis_final_dim{}.pdf".format(i), dpi=300)
+

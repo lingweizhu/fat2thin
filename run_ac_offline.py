@@ -104,7 +104,10 @@ if __name__ == '__main__':
     else:
         raise NotImplementedError
 
+    
     if cfg.exp_type == "learning":
         run_funcs.run_steps(agent_obj, cfg.max_steps, cfg.log_interval, exp_path)
     elif cfg.exp_type == "evolution":
         run_funcs.policy_evolution(cfg, agent_obj)
+    elif cfg.exp_type == "time":
+        run_funcs.timing(agent_obj, cfg.max_steps)
