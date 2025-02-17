@@ -1,6 +1,6 @@
 # Fat-to-Thin Policy Optimization
 
-This repo contains the code for our paper *Fat-to-Thin Policy Optimization: Offline RL with Sparse Policies* accepted by ICLR 2025. 
+This repo contains the code for our paper [Fat-to-Thin Policy Optimization: Offline RL with Sparse Policies](https://openreview.net/pdf?id=SRjzerUpB2) accepted by ICLR 2025. 
 
 
 ## Run code
